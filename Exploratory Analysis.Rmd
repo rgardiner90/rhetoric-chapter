@@ -50,23 +50,65 @@ tidy_text %>%
 ```
 
 ```{r}
-sentiments_gavel <- tidy_text %>%
+sentiments_bing_gavel <- tidy_text %>%
   inner_join(get_sentiments("bing"))
 
-sentiments_gavel %>%
+sentiments_bing_gavel %>%
   count(word, sentiment, sort = TRUE)
 ```
 
 
 ```{r}
-sentiments_gavel_2 <- sentiments_gavel %>%
+sentiments_bing_gavel_2 <- sentiments_bing_gavel %>%
   count(sentiment, Year, Elected) %>%
   spread(sentiment, n, fill = 0) %>%
   mutate(net_sentiment = positive - negative)
 
 
-ggplot(sentiments_gavel_2, aes(x = Year, y = net_sentiment, fill = net_sentiment > 0)) +
+ggplot(sentiments_bing_gavel_2, aes(x = Year, y = net_sentiment, fill = net_sentiment > 0)) +
   geom_col() +
   facet_wrap(~Elected)
 ```
+
+```{r}
+sentiments_afinn_gavel <- tidy_text %>%
+  inner_join(get_sentiments("afinn"))
+
+sentiments_afinn_gavel_2 <- sentiments_afinn_gavel %>%
+  count(score, Year, Elected) %>%
+  mutate(weighted_score = score * n) %>%
+  spread(score, n, fill = 0) %>%
+  select(Year, Elected, weighted_score) %>%
+  group_by(Year, Elected) %>%
+  summarize(total_score = sum(weighted_score))
+
+ggplot(sentiments_afinn_gavel_2, 
+       aes(x = Year, y = total_score, fill = total_score > 0)) +
+  geom_col() +
+  facet_wrap(~Elected)
+```
+
+
+## Figuring out the incorrectly classified
+
+```{r}
+word_bing <- sentiments_bing_gavel %>%
+  count(word, sentiment, sort = TRUE)
+
+write_csv(word_bing, "bing words.csv", na = "")
+```
+
+
+```{r}
+word_afinn <- sentiments_afinn_gavel %>%
+  count(word, score, sort = TRUE)
+
+write_csv(word_afinn, "afinn words.csv", na = "")
+```
+
+
+
+
+
+
 
