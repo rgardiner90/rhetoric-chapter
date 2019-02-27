@@ -91,6 +91,7 @@ ggplot(sentiments_afinn_gavel_2,
 
 ## Figuring out the incorrectly classified
 
+I noticed that words like "Supreme" are getting classified as positive, when that is not really what should be going on.
 ```{r}
 word_bing <- sentiments_bing_gavel %>%
   count(word, sentiment, sort = TRUE)
