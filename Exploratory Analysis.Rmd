@@ -96,7 +96,7 @@ I noticed that words like "Supreme" are getting classified as positive, when tha
 word_bing <- sentiments_bing_gavel %>%
   count(word, sentiment, sort = TRUE)
 
-write_csv(word_bing, "bing words.csv", na = "")
+# write_csv(word_bing, "bing words.csv", na = "")
 ```
 
 
@@ -104,12 +104,202 @@ write_csv(word_bing, "bing words.csv", na = "")
 word_afinn <- sentiments_afinn_gavel %>%
   count(word, score, sort = TRUE)
 
-write_csv(word_afinn, "afinn words.csv", na = "")
+# write_csv(word_afinn, "afinn words.csv", na = "")
+```
+
+```{r}
+word_nrc <- tidy_text %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  anti_join(stop_words) %>%
+  count(word, sentiment, sort = TRUE)
+
+# write_csv(word_nrc, "nrc words.csv", na = "")
+```
+
+## Evaluating potential conflict words
+
+NOTE: if labeled as "2", then it needs greater inspection
+
+```{r}
+custom_afinn <- read_csv("afinn words.csv")
+custom_bing <- read_csv("bing words.csv")
+custom_nrc  <- read_csv("nrc words.csv")
+```
+
+```{r}
+custom_afinn1 <- custom_afinn %>%
+  filter(!is.na(`Stop words`), `Stop words` == 1) %>%
+  select(word)
+
+custom_bing1 <- custom_bing %>%
+  filter(!is.na(`Custom Stop`), `Custom Stop` == 1) %>%
+  select(word)
+
+custom_nrc1 <- custom_nrc %>%
+  filter(!is.na(`Stop words`), `Stop words` == 1) %>%
+  select(word)
+
+custom_afinn_stop_words <- stop_words %>%
+  select(word) %>%
+  rbind(custom_afinn1)
+
+custom_bing_stop_words <- stop_words %>%
+  select(word) %>%
+  rbind(custom_bing1)
+
+custom_nrc_stop_words <- stop_words %>%
+  select(word) %>%
+  rbind(custom_nrc1)
+```
+
+
+```{r}
+tidy_afinn_custom_stop <- tidy_text %>%
+  anti_join(custom_afinn_stop_words, by = "word") %>%
+  inner_join(get_sentiments("afinn"))
+```
+
+```{r}
+tidy_bing_custom_stop <- tidy_text %>%
+  anti_join(custom_bing_stop_words, by = "word") %>%
+  inner_join(get_sentiments("bing"))
+```
+
+
+```{r}
+tidy_nrc_custom_stop <- tidy_text %>%
+  anti_join(custom_nrc_stop_words, by = "word") %>%
+  inner_join(get_sentiments("nrc"))
 ```
 
 
 
 
 
+
+```{r}
+tidy_afinn_custom_stop %>%
+  count(score, Year, Elected) %>%
+  mutate(weighted_score = score * n) %>%
+  spread(score, n, fill = 0) %>%
+  select(Year, Elected, weighted_score) %>%
+  group_by(Year, Elected) %>%
+  summarize(total_score = sum(weighted_score)) %>%
+  ggplot(aes(x = Year, y = total_score, fill = total_score > 0)) +
+  geom_col() +
+  facet_wrap(~Elected)
+
+
+tidy_bing_custom_stop %>%
+  # filter(curbing == 1) %>%
+  count(sentiment, Year, Elected) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(net_sentiment = positive - negative) %>%
+  ggplot(aes(x = Year, y = net_sentiment, fill = net_sentiment > 0)) +
+  geom_col() +
+  facet_wrap(~Elected)
+```
+
+## What about bigrams?
+
+```{r}
+filtered_bigrams <- gavel %>%
+  unnest_tokens(bigram, Description, token = "ngrams", n = 2) %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% custom_afinn_stop_words$word) %>%
+  filter(!word2 %in% custom_afinn_stop_words$word) %>%
+  unite(bigram, word1, word2, sep = " ")
+```
+
+
+```{r}
+filtered_bigrams %>%
+  count(MoreDefined, bigram) %>%
+  bind_tf_idf(bigram, MoreDefined, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(MoreDefined) %>%
+  top_n(20, tf_idf) %>%
+  ungroup() %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(x = bigram, y = tf_idf, fill = MoreDefined)) +
+  geom_col() +
+  facet_wrap(~MoreDefined, scales = "free_y") +
+  coord_flip()
+
+filtered_bigrams %>%
+  count(Elected, bigram) %>%
+  bind_tf_idf(bigram, Elected, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(Elected) %>%
+  top_n(20, tf_idf) %>%
+  ungroup() %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(x = bigram, y = tf_idf, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~Elected, scales = "free_y") +
+  coord_flip()
+```
+
+
+### Sentiment Analysis of Bigrams
+
+
+```{r}
+filtered_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  inner_join(get_sentiments("bing"), by = c("word1" = "word")) %>%
+  unite("bigram", c(word1, word2), sep = " ") %>%
+  rename(sentiment_word1 = "sentiment") %>%
+  group_by(Elected, Year) %>%
+  count(sentiment_word1) %>%
+  spread(sentiment_word1, n) %>%
+  mutate(negative = ifelse(is.na(negative), 0, negative), 
+         net_sentiment = (positive - negative)/(negative + positive)) %>%
+  filter(Year != 2007) %>%
+  ggplot(aes(x = Year, y = net_sentiment, color = Elected)) +
+  geom_line()
+```
+
+```{r}
+filtered_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  inner_join(get_sentiments("bing"), by = c("word2" = "word")) %>%
+  unite("bigram", c(word1, word2), sep = " ") %>%
+  rename(sentiment_word2 = "sentiment") %>%
+  group_by(Elected, Year) %>%
+  count(sentiment_word2) %>%
+  spread(sentiment_word2, n) %>%
+  mutate(negative = ifelse(is.na(negative), 0, negative), 
+         net_sentiment = (positive - negative)/(negative + positive)) %>%
+  filter(Year != 2007) %>%
+  ggplot(aes(x = Year, y = net_sentiment, color = Elected)) +
+  geom_line()
+```
+
+```{r}
+filtered_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!(word1 %in% c("supreme", "merit", "partisan"))) %>%
+  filter(curbing == 1) %>%
+  inner_join(get_sentiments("bing"), by = c("word1" = "word")) %>%
+  unite("bigram", c(word1, word2), sep = " ") %>%
+  rename(sentiment_word1 = "sentiment") %>%
+  count(bigram, sentiment_word1, Elected) %>%
+  group_by(sentiment_word1, Elected) %>%
+  top_n(10, n) %>%
+  ggplot(aes(x = bigram, y = n, fill = sentiment_word1)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(Elected~sentiment_word1, scales = "free_y")
+```
+
+
+There is still SOOOO much processing that needs to happen.. These legal words are so messy.  This last graph is better, but it still needs work.  This should really be up above.
+
+
+## Next steps
+
+1. After doing 1, do basic sentiment on the words again
+2. Add the Loughran sentiments
 
 
