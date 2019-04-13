@@ -15,12 +15,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytext)
 library(readxl)
+
+theme_set(theme_light())
 ```
 
 ```{r}
 gavel <- read_excel("Gavel to Gavel dataset.xlsx")
-
-str(gavel)
 ```
 
 ## Unnesting the tokens
@@ -46,48 +46,13 @@ tidy_text %>%
   geom_col() +
   xlab(NULL) +
   facet_wrap(~ Type, scales = "free_y") +
-  coord_flip()
+  coord_flip() 
 ```
 
 ```{r}
 sentiments_bing_gavel <- tidy_text %>%
   inner_join(get_sentiments("bing"))
-
-sentiments_bing_gavel %>%
-  count(word, sentiment, sort = TRUE)
 ```
-
-
-```{r}
-sentiments_bing_gavel_2 <- sentiments_bing_gavel %>%
-  count(sentiment, Year, Elected) %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(net_sentiment = positive - negative)
-
-
-ggplot(sentiments_bing_gavel_2, aes(x = Year, y = net_sentiment, fill = net_sentiment > 0)) +
-  geom_col() +
-  facet_wrap(~Elected)
-```
-
-```{r}
-sentiments_afinn_gavel <- tidy_text %>%
-  inner_join(get_sentiments("afinn"))
-
-sentiments_afinn_gavel_2 <- sentiments_afinn_gavel %>%
-  count(score, Year, Elected) %>%
-  mutate(weighted_score = score * n) %>%
-  spread(score, n, fill = 0) %>%
-  select(Year, Elected, weighted_score) %>%
-  group_by(Year, Elected) %>%
-  summarize(total_score = sum(weighted_score))
-
-ggplot(sentiments_afinn_gavel_2, 
-       aes(x = Year, y = total_score, fill = total_score > 0)) +
-  geom_col() +
-  facet_wrap(~Elected)
-```
-
 
 ## Figuring out the incorrectly classified
 
@@ -173,32 +138,78 @@ tidy_nrc_custom_stop <- tidy_text %>%
 ```
 
 
+### Custom stop words datasets
 
-
+Most common words in curbing legislation for afinn
+```{r}
+tidy_afinn_custom_stop %>%
+  filter(curbing == 1) %>%
+  count(word) %>%
+  ungroup() %>%  
+  filter(n > 10) %>%
+  arrange(n) %>%
+  mutate(word = factor(word, levels = unique(word))) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  labs(x = "", y = "Word Counts") +
+  coord_flip()
+```
 
 
 ```{r}
-tidy_afinn_custom_stop %>%
+t_words <- tidy_afinn_custom_stop %>%
   count(score, Year, Elected) %>%
   mutate(weighted_score = score * n) %>%
+  group_by(Year, Elected) %>%
+  summarize(all_words = sum(n))
+
+
+tidy_afinn_custom_stop %>%
+  count(score, Year, Elected) %>%
+  mutate(weighted_score = score * n) %>% 
   spread(score, n, fill = 0) %>%
   select(Year, Elected, weighted_score) %>%
   group_by(Year, Elected) %>%
   summarize(total_score = sum(weighted_score)) %>%
-  ggplot(aes(x = Year, y = total_score, fill = total_score > 0)) +
-  geom_col() +
-  facet_wrap(~Elected)
-
-
-tidy_bing_custom_stop %>%
-  # filter(curbing == 1) %>%
-  count(sentiment, Year, Elected) %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(net_sentiment = positive - negative) %>%
-  ggplot(aes(x = Year, y = net_sentiment, fill = net_sentiment > 0)) +
+  left_join(t_words, by = c("Year", "Elected")) %>%
+  mutate(proportion_score = total_score / all_words) %>%
+  ggplot(aes(x = Year, y = proportion_score, fill = total_score > 0)) +
   geom_col() +
   facet_wrap(~Elected)
 ```
+
+```{r}
+tidy_afinn_custom_stop %>%
+  count(Elected, word) %>%
+  bind_tf_idf(word, Elected, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(Elected) %>%
+  top_n(20, tf_idf) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(x = word, y = tf_idf, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~Elected, scales = "free_y") +
+  coord_flip() +
+  labs(title = "All Bills")
+
+tidy_afinn_custom_stop %>%
+  filter(curbing == 1) %>%
+  count(Elected, word) %>%
+  bind_tf_idf(word, Elected, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(Elected) %>%
+  filter(tf_idf > 0.0025) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(x = word, y = tf_idf, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~Elected, scales = "free") +
+  coord_flip() +
+  labs(title = "Curbing Legislation only")
+```
+
+
 
 ## What about bigrams?
 
@@ -214,19 +225,6 @@ filtered_bigrams <- gavel %>%
 
 ```{r}
 filtered_bigrams %>%
-  count(MoreDefined, bigram) %>%
-  bind_tf_idf(bigram, MoreDefined, n) %>%
-  arrange(desc(tf_idf)) %>%
-  group_by(MoreDefined) %>%
-  top_n(20, tf_idf) %>%
-  ungroup() %>%
-  mutate(bigram = reorder(bigram, tf_idf)) %>%
-  ggplot(aes(x = bigram, y = tf_idf, fill = MoreDefined)) +
-  geom_col() +
-  facet_wrap(~MoreDefined, scales = "free_y") +
-  coord_flip()
-
-filtered_bigrams %>%
   count(Elected, bigram) %>%
   bind_tf_idf(bigram, Elected, n) %>%
   arrange(desc(tf_idf)) %>%
@@ -237,7 +235,23 @@ filtered_bigrams %>%
   ggplot(aes(x = bigram, y = tf_idf, fill = Elected)) +
   geom_col() +
   facet_wrap(~Elected, scales = "free_y") +
-  coord_flip()
+  coord_flip() +
+  labs(title = "All Bills")
+
+filtered_bigrams %>%
+  filter(curbing == 1) %>%
+  count(Elected, bigram) %>%
+  bind_tf_idf(bigram, Elected, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(Elected) %>%
+  top_n(20, tf_idf) %>%
+  ungroup() %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(x = bigram, y = tf_idf, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~Elected, scales = "free_y") +
+  coord_flip() +
+  labs(title = "Curbing Legislation")
 ```
 
 
@@ -257,7 +271,9 @@ filtered_bigrams %>%
          net_sentiment = (positive - negative)/(negative + positive)) %>%
   filter(Year != 2007) %>%
   ggplot(aes(x = Year, y = net_sentiment, color = Elected)) +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
+  labs(title = "Sentiment of First Word")
 ```
 
 ```{r}
@@ -273,7 +289,9 @@ filtered_bigrams %>%
          net_sentiment = (positive - negative)/(negative + positive)) %>%
   filter(Year != 2007) %>%
   ggplot(aes(x = Year, y = net_sentiment, color = Elected)) +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +  
+  labs(title = "Sentiment of Second Word")
 ```
 
 ```{r}
@@ -286,11 +304,12 @@ filtered_bigrams %>%
   rename(sentiment_word1 = "sentiment") %>%
   count(bigram, sentiment_word1, Elected) %>%
   group_by(sentiment_word1, Elected) %>%
-  top_n(10, n) %>%
+  filter(n > 2) %>%
   ggplot(aes(x = bigram, y = n, fill = sentiment_word1)) +
   geom_col() +
   coord_flip() +
-  facet_wrap(Elected~sentiment_word1, scales = "free_y")
+  facet_wrap(Elected~sentiment_word1, scales = "free") +
+  labs(title = "Most Common Positive and Negative Words in Curbing Legislation \nof First Word")
 ```
 
 
