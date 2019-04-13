@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data and Packages
+
 
 ```{r}
 library(tidyverse)
@@ -20,8 +20,133 @@ theme_set(theme_light())
 ```
 
 ```{r}
-gavel <- read_excel("Gavel to Gavel dataset.xlsx")
+gavel <- read_excel("Gavel to Gavel dataset.xlsx") %>%
+  filter(Year > 2007,
+         Year < 2020)
 ```
+
+
+# Gavel to Gavel dataset
+
+How many bills are in my dataset?
+```{r}
+gavel %>%
+  count()
+```
+
+How man bills over time?
+```{r}
+gavel %>%
+  count(Year) %>%
+  ggplot(aes(x = Year, y = n)) +
+  geom_line() +
+  labs(y = "Total Number of Bills") +
+  scale_x_discrete(limits = c(2008, 2010, 2012, 2014, 2016))
+
+# ggsave("Bills over year.jpeg")
+```
+
+```{r}
+gavel %>%
+  count(Year, State) %>%
+  spread(Year, n) %>%
+  mutate(diff = (`2009` - `2008`)) %>%
+  # arrange(desc(diff))
+  summarize(median_diff = median(diff, na.rm = TRUE),
+            mean_diff = mean(diff, na.rm = TRUE))
+  
+  
+
+```
+
+Bills by Type
+```{r}
+gavel %>%
+  count(Type) %>%
+  filter(Type != "No Legislation") %>%
+  mutate(Type = fct_reorder(Type, n)) %>%
+  ggplot(aes(x = Type, y = n)) +
+  geom_col() +
+  labs(x = "", y = "Number of Bills") +
+  coord_flip() 
+
+# ggsave("Number of Bills by Type.jpeg")
+```
+
+
+Map of # of bills by state
+```{r}
+library(usmap)
+library(maps)
+
+
+all_states <- map_data("state")
+
+us.cities %>%
+  filter(capital == 2) %>%
+  left_join(gavel, by = c("country.etc" = "State")) %>%
+  filter(!(country.etc %in% c("AK", "HI"))) %>%
+  count(long, lat, Elected) %>%
+  ggplot() +
+  geom_point(aes(x = long, y = lat, size = n, color = Elected)) +
+  borders("state") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  theme_void() +
+  labs(caption = "Larger Circles Indicate More Bills",
+       color = "Selection System",
+       size = "# Bills") +
+  scale_fill_discrete(name = "Selection System") 
+
+# ggsave("bills by state and selection.jpeg")
+```
+
+
+Bills by selection system
+
+```{r}
+gavel %>%
+  group_by(State, Elected) %>%
+  count() %>%
+  ungroup() %>%
+  group_by(Elected) %>%
+  summarize(mean_bills = mean(n)) %>%
+  ggplot(aes(x = Elected, y = mean_bills)) +
+  geom_col() +
+  labs(x = "Selection System", y = "Average Number of Bills")
+
+ggsave("number of bills by selection system.jpeg")
+
+gavel %>%
+  group_by(State, Elected, Year) %>%
+  count() %>%
+  ungroup() %>%
+  ggplot(aes(x = n, color = Elected)) +
+  geom_density() +
+  labs(x = "Number of Bills in a Year", y = "Density", color = "Selection System")
+
+ggsave("Density of Bills.jpeg")
+```
+
+```{r}
+gavel %>%
+  mutate(RichardLastAction = ifelse(RichardLastAction == "introduced", "Introduced", 
+                                    RichardLastAction)) %>%
+  count(RichardLastAction) %>%
+  filter(!is.na(RichardLastAction)) %>%
+  mutate(RichardLastAction = fct_reorder(RichardLastAction, n)) %>%
+  ggplot(aes(x = RichardLastAction, y = n)) +
+  geom_col() +
+  labs(x = "Final Action", y = "Number of Bills") +
+  coord_flip() 
+
+ggsave("Bills by Last Action.jpeg")
+```
+
+
+# Text Analysis
+
 
 ## Unnesting the tokens
 ```{r}
