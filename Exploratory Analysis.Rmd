@@ -136,12 +136,14 @@ gavel %>%
   count(RichardLastAction) %>%
   filter(!is.na(RichardLastAction)) %>%
   mutate(RichardLastAction = fct_reorder(RichardLastAction, n)) %>%
-  ggplot(aes(x = RichardLastAction, y = n)) +
+  ggplot(aes(x = RichardLastAction, y = n, label = n)) +
   geom_col() +
+  geom_text(hjust = -0.5) +
   labs(x = "Final Action", y = "Number of Bills") +
+  ylim(0,7500) +
   coord_flip() 
 
-ggsave("Bills by Last Action.jpeg")
+# ggsave("Bills by Last Action.jpeg")
 ```
 
 
@@ -183,25 +185,25 @@ sentiments_bing_gavel <- tidy_text %>%
 
 I noticed that words like "Supreme" are getting classified as positive, when that is not really what should be going on.
 ```{r}
-word_bing <- sentiments_bing_gavel %>%
-  count(word, sentiment, sort = TRUE)
+# word_bing <- sentiments_bing_gavel %>%
+#   count(word, sentiment, sort = TRUE)
 
 # write_csv(word_bing, "bing words.csv", na = "")
 ```
 
 
 ```{r}
-word_afinn <- sentiments_afinn_gavel %>%
-  count(word, score, sort = TRUE)
+# word_afinn <- sentiments_afinn_gavel %>%
+#   count(word, score, sort = TRUE)
 
 # write_csv(word_afinn, "afinn words.csv", na = "")
 ```
 
 ```{r}
-word_nrc <- tidy_text %>%
-  inner_join(get_sentiments("nrc"), by = "word") %>%
-  anti_join(stop_words) %>%
-  count(word, sentiment, sort = TRUE)
+# word_nrc <- tidy_text %>%
+#   inner_join(get_sentiments("nrc"), by = "word") %>%
+#   anti_join(stop_words) %>%
+#   count(word, sentiment, sort = TRUE)
 
 # write_csv(word_nrc, "nrc words.csv", na = "")
 ```
@@ -441,9 +443,31 @@ filtered_bigrams %>%
 There is still SOOOO much processing that needs to happen.. These legal words are so messy.  This last graph is better, but it still needs work.  This should really be up above.
 
 
-## Next steps
+## Network plots
 
-1. After doing 1, do basic sentiment on the words again
-2. Add the Loughran sentiments
+
+```{r}
+library(widyr)
+library(igraph)
+library(ggraph)
+
+set.seed(051319)
+
+
+bigrams_count <- filtered_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+
+
+
+bigrams_count %>%
+  filter(n > 100) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+
+```
 
 
