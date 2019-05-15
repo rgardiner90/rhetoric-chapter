@@ -471,3 +471,117 @@ bigrams_count %>%
 ```
 
 
+## ACTUALLY SUPPORTIVE GRAPHS
+
+Below are weighted totals (weighted by the prevelance of the relevant variables).  Generally, the hope is to find that elected courts are almost always discussed more negatively than appointed.
+
+Using bing dictionary, how are elected courts discussed?
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, Year, Elected, word) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(Year, Elected) %>%
+  group_by(Year, Elected) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_score, color = Elected)) +
+  geom_line() +
+  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
+  labs(y = "Net Sentiment", caption = "Using Bing Dictionary")
+```
+
+What about selection system AND ideologically distant?
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, Year, outside, Elected, word) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(Year, outside, Elected) %>%
+  group_by(Year, outside, Elected) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_score, color = Elected, lty = as.factor(outside))) +
+  geom_line() +
+  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
+  labs(y = "Net Sentiment", lty = "Ideologically Distant?", caption = "Using Bing Dictionary")
+  
+?add_count
+```
+
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, Type, word) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(Type) %>%
+  group_by(Type) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  mutate(Type = fct_reorder(Type, total_score)) %>%
+  ggplot(aes(x = Type, y = total_score)) +
+  geom_col() +
+  coord_flip()
+```
+
+Sentiment by Bill type.  Takeaway: in every time, the elected is more negative than the appointed.
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, Type, word, Elected) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(Type, Elected) %>%
+  group_by(Type, Elected) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  ungroup() %>%
+  mutate(Type = fct_reorder(Type, total_score)) %>%
+  ggplot(aes(x = Type, y = total_score, fill = Elected)) +
+  geom_col(position = "dodge") +
+  coord_flip()
+```
+
+
+
+
+Next is to do the same graphs but curbing, then start the write up
+
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, curbing, word) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(curbing) %>%
+  group_by(curbing) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  ungroup() %>%
+  filter(!is.na(curbing)) %>%
+  ggplot(aes(x = as.factor(curbing), y = total_score, fill = as.factor(curbing))) +
+  geom_col() +
+  coord_cartesian(ylim = c(-2, 2)) +
+  labs(fill = "court curbing")
+```
+
+
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, curbing, word, Elected) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(curbing, Elected) %>%
+  group_by(curbing, Elected) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  ungroup() %>%
+  filter(!is.na(curbing)) %>%
+  ggplot(aes(x = Elected, y = total_score, fill = as.factor(curbing))) +
+  geom_col(position = "dodge") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  labs(fill = "Court Curbing")
+```
+
+
+Next steps: Make the graph prettier (labels especially), and then start the write up.
+
+
