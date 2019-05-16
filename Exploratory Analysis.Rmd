@@ -16,6 +16,7 @@ library(tidyverse)
 library(tidytext)
 library(readxl)
 library(statebins)
+library(geofacet)
 
 theme_set(theme_light())
 ```
@@ -657,11 +658,13 @@ tidy_bing_custom_stop %>%
   group_by(Year, Elected, State) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
   summarize(total_score = sum(proportional_sentiment)) %>%
-  ggplot(aes(x = Year, y = total_score, color = Elected)) +
-  geom_line() +
-  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
-  labs(y = "Net Sentiment", caption = "Using Bing Dictionary", color = "Selection System")
+  statebins_continuous(state_col = "State",
+                     text_color = "white", value_col = "total_score",
+                     brewer_pal="Reds", font_size = 3,
+                     legend_title="Test")
+```
 
+```{r}
 tidy_bing_custom_stop %>%
   filter(word != "crime") %>%
   count(sentiment, Year, Elected, word, State) %>%
@@ -671,11 +674,15 @@ tidy_bing_custom_stop %>%
   group_by(Year, Elected, State) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
   summarize(total_score = sum(proportional_sentiment)) %>%
-  statebins_continuous(state_col = "State",
-                     text_color = "white", value_col = "total_score",
-                     brewer_pal="Reds", font_size = 3,
-                     legend_title="Test")
+  arrange(State) %>%
+  ggplot(aes(x = Year, y = total_score, color = Elected)) +
+  geom_line() +
+  theme_bw() +
+  labs(y = "Net Sentiment", color = "Selection System") +
+  scale_x_continuous(breaks = c(2008, 2012, 2016), labels = c("'08", "'12", "1'6")) +
+  scale_y_continuous(breaks = c(0, -.2)) +
+  facet_geo(~State, grid =  "us_state_grid3")
+
+# ggsave("facet_geo of sentiment over space and time.jpeg")
 ```
 
-
-Change colors in statebins
