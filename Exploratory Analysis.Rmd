@@ -686,3 +686,19 @@ tidy_bing_custom_stop %>%
 # ggsave("facet_geo of sentiment over space and time.jpeg")
 ```
 
+## Code for OLS
+
+
+```{r}
+tidy_bing_custom_stop %>%
+  filter(word != "crime") %>%
+  count(sentiment, Year, Elected, word, State) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  add_count(Year, Elected) %>%
+  group_by(Year, Elected, State) %>%
+  mutate(proportional_sentiment = net_sentiment / n) %>%
+  summarize(total_score = sum(proportional_sentiment)) %>%
+  arrange(State)
+```
+
