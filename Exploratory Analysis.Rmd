@@ -536,6 +536,41 @@ tidy_bing_custom_stop %>%
 # ggsave("net sentiment by ideology and selection.jpeg")
 ```
 
+Now let's take a more refined view of ideological distnace.  It appears that there really isn't much going on here between ideological distnace and net sentiment:
+```{r}
+tidy_bing_custom_stop %>%
+  count(sentiment, `Bill Number`, State, Year, upper, lower, judicial, word, Year, Elected) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  group_by(State, Year, upper, lower, judicial, Elected) %>%
+  summarize(total_sentiment = sum(net_sentiment)) %>%
+  mutate(lower_dist = abs(lower - judicial),
+         upper_dist = abs(upper - judicial)) %>%
+  ggplot(aes(lower_dist, total_sentiment, color = Elected)) +
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Ideological Distance: Lower Chamber", y = "Net Sentiment", color = "Selection System")
+
+# ggsave("ideological distance (lower) and sentiment as scatterplot.jpeg")
+
+tidy_bing_custom_stop %>%
+  count(sentiment, `Bill Number`, State, Year, upper, lower, judicial, word, Year, Elected) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         net_sentiment = sentiment * n) %>%
+  group_by(State, Year, upper, lower, judicial, Elected) %>%
+  summarize(total_sentiment = sum(net_sentiment)) %>%
+  mutate(lower_dist = abs(lower - judicial),
+         upper_dist = abs(upper - judicial)) %>%
+  ggplot(aes(upper_dist, total_sentiment, color = Elected)) +
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Ideological Distance: Lower Chamber", y = "Net Sentiment", color = "Selection System")
+
+
+# ggsave("ideological distance (upper) and sentiment as scatterplot.jpeg")
+```
+
+
 ```{r}
 tidy_bing_custom_stop %>%
   count(sentiment, Type, word) %>%
