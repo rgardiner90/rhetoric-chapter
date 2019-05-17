@@ -524,7 +524,7 @@ tidy_bing_custom_stop %>%
   group_by(Year, outside, Elected) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
   ungroup() %>%
-  mutate(outside = ifelse(outside == 1, "Yes", "No")) %>%
+  mutate(outside = ifelse(outside == 1, "Distant", "Not Distant")) %>%
   group_by(Year, outside, Elected) %>%
   summarize(total_score = sum(proportional_sentiment)) %>%
   ggplot(aes(x = Year, y = total_score, color = Elected)) +
