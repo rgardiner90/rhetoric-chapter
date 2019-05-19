@@ -623,6 +623,7 @@ tidy_bing_custom_stop %>%
   mutate(Type = fct_reorder(Type, total_score)) %>%
   ggplot(aes(x = Type, y = total_score, fill = Elected)) +
   geom_col(position = "dodge") +
+  labs(x = "", y = "Net Sentiment", fill = "Selection System") +
   coord_flip()
 
 # ggsave("sentiment by type and selection.jpeg")
