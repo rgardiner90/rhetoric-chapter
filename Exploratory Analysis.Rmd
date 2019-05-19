@@ -25,6 +25,11 @@ theme_set(theme_light())
 gavel <- read_excel("Gavel to Gavel dataset.xlsx") %>%
   filter(Year > 2007,
          Year < 2020)
+
+political_culture <- read_csv("political culture.csv")
+professional <- read_csv("ncsl professionalization.csv")
+legislative_control <- read_excel("Legislative Control.xlsx")
+
 ```
 
 
@@ -478,6 +483,20 @@ bigrams_count %>%
 
 ## ACTUALLY SUPPORTIVE GRAPHS
 
+I am now going to use the BING dictionary which seems to be showing what I am looking for (showing actual results instead of noise)
+
+```{r}
+tidy_bing_custom_stop <- tidy_bing_custom_stop %>%
+  left_join(professional, by = c("Fullstate" = "State")) %>%
+  left_join(political_culture, by = c("Fullstate" = "State")) %>%
+  left_join(legislative_control, by = c("Fullstate" = "State")) %>%
+  select(-Year.y) %>%
+  rename(Year = "Year.x")
+```
+
+
+
+
 Below are weighted totals (weighted by the prevelance of the relevant variables).  Generally, the hope is to find that elected courts are almost always discussed more negatively than appointed.
 
 Using bing dictionary, how are elected courts discussed?
@@ -633,6 +652,9 @@ tidy_bing_custom_stop %>%
 ```
 
 
+
+
+
 ```{r}
 tidy_bing_custom_stop %>%
   filter(word != "crime") %>%
@@ -720,6 +742,68 @@ tidy_bing_custom_stop %>%
 
 # ggsave("facet_geo of sentiment over space and time.jpeg")
 ```
+
+#### Control Variables
+
+Professional
+```{r}
+tidy_bing_custom_stop %>%
+  filter(word != "crime") %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
+  add_count(Professionalization) %>%
+  group_by(Professionalization, n) %>%
+  summarize(total_sentiment = sum(sentiment)) %>%
+  ungroup() %>%
+  mutate(proportional_sentiment = total_sentiment / n) %>%
+  ggplot(aes(x = Professionalization, y = proportional_sentiment)) +
+  geom_col() +
+  labs(x = "Level of Professionalization", y = "Net Sentiment")
+
+# ggsave("professionalization.jpeg")
+```
+
+political culture
+```{r}
+tidy_bing_custom_stop %>%
+  filter(word != "crime") %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
+         culture = ifelse(Moralistic  == 1, "Moralistic",
+                          ifelse(Traditionalistic == 1, "Traditionalistic",
+                                 "Individualistic"))) %>%
+  add_count(culture) %>% 
+  group_by(culture, n) %>%
+  summarize(total_sentiment = sum(sentiment)) %>%
+  ungroup() %>%
+  mutate(proportional_sentiment = total_sentiment / n) %>%
+  filter(!(is.na(culture))) %>%
+  ggplot(aes(x = culture, y = proportional_sentiment)) +
+  geom_col() +
+  labs(x = "Political Culture", y = "Net Sentiment")
+
+# ggsave("political culture.jpeg")
+```
+
+```{r}
+tidy_bing_custom_stop %>%
+  filter(word != "crime") %>%
+  mutate(unified = ifelse(SplitLegislature == 0, 1, 0),
+         sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
+  add_count(unified) %>% 
+  group_by(unified, n) %>%
+  summarize(total_sentiment = sum(sentiment)) %>%
+  ungroup() %>%
+  mutate(proportional_sentiment = total_sentiment / n) %>%
+  filter(!(is.na(unified))) %>%
+  ggplot(aes(x = as.factor(unified), y = proportional_sentiment)) +
+  geom_col() +
+  labs(x = "Unified Legislative Control", y = "Net Sentiment") +
+  scale_x_discrete(labels = c("No", "Yes"))
+
+# ggsave("unified.jpeg")
+```
+
+
+
 
 ## Code for OLS
 
