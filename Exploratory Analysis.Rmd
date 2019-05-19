@@ -564,7 +564,7 @@ tidy_bing_custom_stop %>%
   ggplot(aes(upper_dist, total_sentiment, color = Elected)) +
   geom_point() +
   geom_smooth() +
-  labs(x = "Ideological Distance: Lower Chamber", y = "Net Sentiment", color = "Selection System")
+  labs(x = "Ideological Distance: Upper Chamber", y = "Net Sentiment", color = "Selection System")
 
 
 # ggsave("ideological distance (upper) and sentiment as scatterplot.jpeg")
