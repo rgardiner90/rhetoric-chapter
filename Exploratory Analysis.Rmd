@@ -806,19 +806,44 @@ tidy_bing_custom_stop %>%
 
 
 
-## Code for OLS
+## Data for OLS
 
-
+Creating the DV and main IV
 ```{r}
-tidy_bing_custom_stop %>%
+ols_data <- tidy_bing_custom_stop %>%
   filter(word != "crime") %>%
-  count(sentiment, Year, Elected, word, State) %>%
+  count(sentiment, Year, Elected, word, Fullstate) %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
          net_sentiment = sentiment * n) %>%
   add_count(Year, Elected) %>%
-  group_by(Year, Elected, State) %>%
+  group_by(Year, Elected, Fullstate) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
-  arrange(State)
+  summarize(total_score = sum(proportional_sentiment)) 
 ```
+
+Preparing an object for ideology
+```{r}
+ideology <- gavel %>%
+  select(Fullstate, Year, judicial, lower, upper, outside) %>%
+  distinct()
+```
+
+
+joining the different tables to create the csv file called `model_data.csv`.
+```{r}
+ols_data <- ols_data %>%
+  left_join(legislative_control, 
+            by = c("Fullstate" = "State", "Year")) %>%
+  left_join(political_culture, by = c("Fullstate" = "State")) %>%
+  left_join(professional, by = c("Fullstate" = "State")) %>%
+  left_join(ideology, by = c("Fullstate", "Year"))
+
+write.csv(ols_data, "model_data.csv")
+```
+
+
+
+
+
+
 

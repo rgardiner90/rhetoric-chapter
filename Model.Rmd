@@ -1,0 +1,29 @@
+---
+title: "Model"
+author: "Richard G. Gardiner"
+date: "5/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(stargazer)
+
+data <- read_csv("model_data.csv") %>%
+  mutate(Elected = factor(Elected))
+```
+
+First model (really a test)
+```{r}
+model1 <- lm(total_score ~ Elected + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + outside,
+             data = data)
+
+stargazer(model1, type = "text")
+```
+
