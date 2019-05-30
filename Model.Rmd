@@ -13,17 +13,96 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(stargazer)
+library(lme4)
 
 data <- read_csv("model_data.csv") %>%
-  mutate(Elected = factor(Elected))
+  mutate(Elected = factor(Elected),
+         Fullstate = factor(Fullstate),
+         court_lower = abs(judicial - lower),
+         court_upper = abs(judicial - upper))
 ```
 
-First model (really a test)
 ```{r}
-model1 <- lm(total_score ~ Elected + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + outside,
+elected <- lmer(total_score ~ Elected + (1 | Fullstate),
              data = data)
 
-stargazer(model1, type = "text")
+stargazer(elected, type = "text", report = ('vc*p'))
 ```
+
+```{r}
+ideology <- lmer(total_score ~ Elected + outside + (1 | Fullstate),
+             data = data)
+
+stargazer(ideology, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+interaction <- lmer(total_score ~ Elected + outside + Elected * outside + (1 | Fullstate),
+             data = data)
+
+stargazer(interaction, type = "text", report = ('vc*p'))
+```
+
+```{r}
+controls <- lmer(total_score ~ Elected  + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+stargazer(controls, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+full_int <- lmer(total_score ~ Elected * outside + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_int, type = "text", report = ('vc*p'))
+```
+
+```{r}
+full_no_int <- lmer(total_score ~ Elected + outside + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_no_int, type = "text", report = ('vc*p'))
+```
+
+
+
+## Trying series with other ideology term
+
+```{r}
+ideology2 <- lmer(total_score ~ Elected + court_lower + court_upper + (1 | Fullstate),
+             data = data)
+stargazer(ideology2, type = "text", report = ('vc*p'))
+```
+
+```{r}
+interaction2 <- lmer(total_score ~ Elected + court_lower + court_upper + Elected * court_lower +
+                       Elected * court_upper + (1 | Fullstate),
+             data = data)
+stargazer(interaction2, type = "text", report = ('vc*p'))
+```
+
+```{r}
+full_no_int2 <- lmer(total_score ~ Elected + court_lower +  court_upper + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_no_int2, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+full_int2 <- lmer(total_score ~ Elected * court_lower + Elected * court_upper + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_int2, type = "text", report = ('vc*p'))
+```
+
+
+
+
 
