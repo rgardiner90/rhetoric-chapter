@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(stargazer)
 library(lme4)
+library(car)
 
 data <- read_csv("model_data.csv") %>%
   mutate(Elected = factor(Elected),
@@ -102,6 +103,9 @@ full_int2 <- lmer(total_score ~ Elected * court_lower + Elected * court_upper + 
 stargazer(full_int2, type = "text", report = ('vc*p'))
 ```
 
+```{r}
+
+```
 
 
 
