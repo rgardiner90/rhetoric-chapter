@@ -24,14 +24,14 @@ data <- read_csv("model_data.csv") %>%
 ```
 
 ```{r}
-elected <- lmer(total_score ~ Elected + (1 | Fullstate),
+elected <- lmer(total_score ~ Elected + Year + (1 | Fullstate),
              data = data)
 
 stargazer(elected, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-ideology <- lmer(total_score ~ Elected + outside + (1 | Fullstate),
+ideology <- lmer(total_score ~ Elected + Year + outside + (1 | Fullstate),
              data = data)
 
 stargazer(ideology, type = "text", report = ('vc*p'))
@@ -39,14 +39,14 @@ stargazer(ideology, type = "text", report = ('vc*p'))
 
 
 ```{r}
-interaction <- lmer(total_score ~ Elected + outside + Elected * outside + (1 | Fullstate),
+interaction <- lmer(total_score ~ Elected + Year + outside + Elected * outside + (1 | Fullstate),
              data = data)
 
 stargazer(interaction, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-controls <- lmer(total_score ~ Elected  + RepublicanLegslature + SplitLegislature +
+controls <- lmer(total_score ~ Elected + Year + RepublicanLegslature + SplitLegislature +
              Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 stargazer(controls, type = "text", report = ('vc*p'))
@@ -54,7 +54,7 @@ stargazer(controls, type = "text", report = ('vc*p'))
 
 
 ```{r}
-full_int <- lmer(total_score ~ Elected * outside + RepublicanLegslature + SplitLegislature +
+full_int <- lmer(total_score ~ Elected * outside + Year + RepublicanLegslature + SplitLegislature +
              Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
@@ -62,7 +62,7 @@ stargazer(full_int, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-full_no_int <- lmer(total_score ~ Elected + outside + RepublicanLegslature + SplitLegislature +
+full_no_int <- lmer(total_score ~ Elected + Year + outside + RepublicanLegslature + SplitLegislature +
              Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
@@ -74,20 +74,20 @@ stargazer(full_no_int, type = "text", report = ('vc*p'))
 ## Trying series with other ideology term
 
 ```{r}
-ideology2 <- lmer(total_score ~ Elected + court_lower + court_upper + (1 | Fullstate),
+ideology2 <- lmer(total_score ~ Elected + Year + court_lower + court_upper + (1 | Fullstate),
              data = data)
 stargazer(ideology2, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-interaction2 <- lmer(total_score ~ Elected + court_lower + court_upper + Elected * court_lower +
+interaction2 <- lmer(total_score ~ Elected + Year + court_lower + court_upper + Elected * court_lower +
                        Elected * court_upper + (1 | Fullstate),
              data = data)
 stargazer(interaction2, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-full_no_int2 <- lmer(total_score ~ Elected + court_lower +  court_upper + RepublicanLegslature + SplitLegislature +
+full_no_int2 <- lmer(total_score ~ Elected + Year + court_lower +  court_upper + RepublicanLegslature + SplitLegislature +
              Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
@@ -96,15 +96,59 @@ stargazer(full_no_int2, type = "text", report = ('vc*p'))
 
 
 ```{r}
-full_int2 <- lmer(total_score ~ Elected * court_lower + Elected * court_upper + RepublicanLegslature + SplitLegislature +
+full_int2 <- lmer(total_score ~ Elected * court_lower + Year + Elected * court_upper + RepublicanLegslature + SplitLegislature +
              Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_int2, type = "text", report = ('vc*p'))
 ```
 
+### Trying it with multiple types
 ```{r}
+election_type <- read_csv("election type.csv") %>%
+  select(-1)
 
+selection_sys_data <- data %>%
+  left_join(election_type, by = "Fullstate") %>%
+  mutate(Fullstate = factor(Fullstate),
+         selection_system = factor(MoreDefined))
+```
+
+```{r}
+basic <- lmer(total_score ~ selection_system + Year + (1 | Fullstate), data = selection_sys_data)
+
+stargazer(basic, type = "text", report = ('cv*p'))
+```
+
+```{r}
+ideology_system <- lmer(total_score ~ selection_system + Year + outside + (1 | Fullstate), data = selection_sys_data)
+
+stargazer(ideology_system, type = "text", report = ('cv*p'))
+```
+
+```{r}
+interaction_system <- lmer(total_score ~ selection_system * outside + Year + (1 | Fullstate), data = selection_sys_data)
+
+summary(interaction_system)
+```
+
+```{r}
+full_no_int_system <- lmer(total_score ~ selection_system + Year + outside + court_lower +  court_upper + 
+                           RepublicanLegslature + SplitLegislature +
+                           Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+                           data = selection_sys_data)
+
+summary(full_no_int_system)
+```
+
+
+```{r}
+full_int_system <- lmer(total_score ~ selection_system * outside + Year + court_lower +  court_upper + 
+                           RepublicanLegslature + SplitLegislature +
+                           Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+                           data = selection_sys_data)
+
+summary(full_int_system)
 ```
 
 

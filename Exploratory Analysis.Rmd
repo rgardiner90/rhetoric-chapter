@@ -29,7 +29,6 @@ gavel <- read_excel("Gavel to Gavel dataset.xlsx") %>%
 political_culture <- read_csv("political culture.csv")
 professional <- read_csv("ncsl professionalization.csv")
 legislative_control <- read_excel("Legislative Control.xlsx")
-
 ```
 
 
@@ -802,8 +801,6 @@ tidy_bing_custom_stop %>%
 
 # ggsave("unified.jpeg")
 ```
-
-
 
 
 ## Data for OLS
