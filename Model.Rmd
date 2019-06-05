@@ -151,6 +151,157 @@ full_int_system <- lmer(total_score ~ selection_system * outside + Year + court_
 summary(full_int_system)
 ```
 
+## Net Change Analysis
 
+```{r}
+net_change <- read_csv("net_change.csv")
+
+change_data <- data %>%
+  left_join(net_change, by = c("Fullstate", "Year")) 
+```
+
+
+```{r}
+elected_change <- lmer(total_score ~ Elected + (1 | Fullstate),
+             data = change_data)
+
+stargazer(elected_change, type = "text", report = ('vc*p'))
+```
+
+```{r}
+ideology_change <- lmer(total_score ~ Elected + outside + (1 | Fullstate),
+             data = change_data)
+
+stargazer(ideology_change, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+interaction_change <- lmer(total_score ~ Elected + outside + Elected * outside + (1 | Fullstate),
+             data = change_data)
+
+stargazer(interaction_change, type = "text", report = ('vc*p'))
+```
+
+```{r}
+controls_change <- lmer(total_score ~ Elected + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = change_data)
+stargazer(controls_change, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+full_int_change <- lmer(total_score ~ Elected * outside +  RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = change_data)
+
+stargazer(full_int_change, type = "text", report = ('vc*p'))
+```
+
+```{r}
+full_no_int_change <- lmer(total_score ~ Elected + outside + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = change_data)
+
+stargazer(full_no_int_change, type = "text", report = ('vc*p'))
+```
+
+
+## Models that break up selection system
+
+### Data prep
+```{r}
+selection_type <- read_csv("selection system.csv")
+
+selection_type <- selection_type %>%
+  distinct()
+```
+
+```{r}
+data <- data %>%
+  left_join(selection_type, by = "Fullstate") %>%
+  select(-State)
+
+data <- data %>%
+  mutate(MoreDefined = factor(MoreDefined))
+```
+
+
+### Models
+
+Non partisan is only positive and sig
+```{r}
+elected_refined <- lmer(total_score ~ MoreDefined + Year + (1 | Fullstate),
+             data = data)
+
+stargazer(elected_refined, type = "text", report = ('vc*p'))
+```
+
+Nonpartisan is again positive and sig
+```{r}
+ideology_refined <- lmer(total_score ~ MoreDefined + Year + outside + (1 | Fullstate),
+             data = data)
+
+stargazer(ideology_refined, type = "text", report = ('vc*p'))
+```
+
+Nonpartisan is positive and sig
+```{r}
+interaction_refined <- lmer(total_score ~ MoreDefined + Year + outside + Elected * outside + (1 | Fullstate),
+             data = data)
+
+stargazer(interaction_refined, type = "text", report = ('vc*p'))
+```
+
+Only professional is sig
+```{r}
+controls_refined <- lmer(total_score ~ MoreDefined + Year + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+stargazer(controls_refined, type = "text", report = ('vc*p'))
+```
+
+Only professionalization
+```{r}
+full_int_refined <- lmer(total_score ~ MoreDefined * outside + Year + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_int_refined, type = "text", report = ('vc*p'))
+```
+
+
+only professionalization
+```{r}
+full_no_int_refined <- lmer(total_score ~ MoreDefined + Year + outside + RepublicanLegslature + SplitLegislature +
+             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+             data = data)
+
+stargazer(full_no_int_refined, type = "text", report = ('vc*p'))
+```
+
+### Diagnostics
+
+
+I think this is a good graph to include in the results.
+```{r}
+data %>%
+  group_by(MoreDefined) %>%
+  mutate(mean_score = mean(total_score),
+         sd = sd(total_score),
+         lower_bound = (mean_score - sd),
+         upper_bound = (mean_score + sd)) %>%
+  ungroup() %>%
+  ggplot(aes(x = total_score, y = Fullstate, color = MoreDefined)) +
+  geom_point() +
+  geom_vline(aes(xintercept = mean_score)) +
+  geom_vline(aes(xintercept = lower_bound), color = "red", lty = 2) +
+  geom_vline(aes(xintercept = upper_bound), color = "red", lty = 2) +
+  facet_wrap(~MoreDefined, scales = "free_y", ncol = 1) +
+  theme_minimal() +
+  labs(x = "Net Sentiment", y = "", color = "Selection System",
+       caption = "Black line: Selection Mean \n Red Lines: 1 Standard Deviation")
+```
 
 
