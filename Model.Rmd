@@ -71,6 +71,7 @@ stargazer(full_no_int, type = "text", report = ('vc*p'))
 
 
 
+
 ## Trying series with other ideology term
 
 ```{r}
@@ -102,6 +103,16 @@ full_int2 <- lmer(total_score ~ Elected * court_lower + Year + Elected * court_u
 
 stargazer(full_int2, type = "text", report = ('vc*p'))
 ```
+
+
+
+```{r}
+# stargazer(elected, ideology2, interaction2, full_int2, full_no_int2,  
+          # type = "html", out = "model results")
+```
+
+
+
 
 ### Trying it with multiple types
 ```{r}
