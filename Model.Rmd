@@ -15,12 +15,16 @@ library(tidyverse)
 library(stargazer)
 library(lme4)
 library(car)
+library(modelr)
+
+theme_set(theme_light())
 
 data <- read_csv("model_data.csv") %>%
   mutate(Elected = factor(Elected),
          Fullstate = factor(Fullstate),
          court_lower = abs(judicial - lower),
-         court_upper = abs(judicial - upper))
+         court_upper = abs(judicial - upper),
+         Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0))
 ```
 
 ```{r}
@@ -46,24 +50,24 @@ stargazer(interaction, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-controls <- lmer(total_score ~ Elected + Year + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+controls <- lmer(total_score ~ Elected + Year + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 stargazer(controls, type = "text", report = ('vc*p'))
 ```
 
 
 ```{r}
-full_int <- lmer(total_score ~ Elected * outside + Year + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_int <- lmer(total_score ~ Elected * outside + Year + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_int, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-full_no_int <- lmer(total_score ~ Elected + Year + outside + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_no_int <- lmer(total_score ~ Elected + Year + outside + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_no_int, type = "text", report = ('vc*p'))
@@ -88,8 +92,8 @@ stargazer(interaction2, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-full_no_int2 <- lmer(total_score ~ Elected + Year + court_lower +  court_upper + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_no_int2 <- lmer(total_score ~ Elected + Year + court_lower +  court_upper + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_no_int2, type = "text", report = ('vc*p'))
@@ -97,8 +101,8 @@ stargazer(full_no_int2, type = "text", report = ('vc*p'))
 
 
 ```{r}
-full_int2 <- lmer(total_score ~ Elected * court_lower + Year + Elected * court_upper + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_int2 <- lmer(total_score ~ Elected * court_lower + Year + Elected * court_upper  +
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_int2, type = "text", report = ('vc*p'))
@@ -107,11 +111,69 @@ stargazer(full_int2, type = "text", report = ('vc*p'))
 
 
 ```{r}
-# stargazer(elected, ideology2, interaction2, full_int2, full_no_int2,  
-          # type = "html", out = "model results")
+# stargazer(elected, ideology2, interaction2, full_int2, full_no_int2,
+#           type = "html", report = ('vc*p'), out = "model results.doc")
+```
+
+## Predictions
+
+```{r}
+upper <- data %>%
+  data_grid(court_upper, .model = full_no_int2) 
+
+upper %>%
+  mutate(pred = predict(full_no_int2, newdata = upper, allow.new.levels = TRUE)) %>%
+  group_by(court_upper) %>%
+  summarise(pred = mean(pred)) %>%
+  ungroup() %>%
+  ggplot(aes(x = court_upper, y = pred)) +
+  geom_line() +
+  theme_light() +
+  labs(x = "Ideological Distance: Upper Chamber", y = "Predicted Net-Proportional Sentiment")
+
+# ggsave("upper ideology and sentiment.jpeg")
 ```
 
 
+```{r}
+individual <- data %>%
+  data_grid(Individualistic, .model = full_int2)
+
+individual %>%
+  mutate(pred = predict(full_int2, newdata = individual, allow.new.levels = TRUE)) %>%
+  group_by(Individualistic) %>%
+  summarise(pred = mean(pred)) %>%
+  ungroup() %>%
+  filter(!is.na(Individualistic)) %>%
+  ggplot(aes(x = factor(Individualistic), y = pred)) +
+  geom_col() +
+  labs(x = "", y = "Predicted Net-Proportional Sentiment") +
+  scale_x_discrete(labels = c("Moralistic", "Individualistic"))
+
+# ggsave("culture and sentiment.jpeg")
+```
+
+```{r}
+professional <- data %>%
+  data_grid(Professionalization, .model = full_int2)
+
+professional %>%
+  mutate(pred = predict(full_int2, newdata = professional, allow.new.levels = TRUE)) %>%
+  group_by(Professionalization) %>%
+  summarise(pred = mean(pred)) %>%
+  ungroup() %>%
+  filter(!is.na(Professionalization)) %>%
+  ggplot(aes(x = factor(Professionalization), y = pred)) +
+  geom_col() +
+  labs(x = "Level of Professionalization", y = "Predicted Net-Proportional Sentiment") +
+  scale_x_discrete(breaks = c(1, 2, 3, 4, 5), labels = c("Least", "", "", "", "Most"))
+
+# ggsave("professionalization and predicted sentiment.jpeg")
+```
+
+
+
+## Alternatives
 
 
 ### Trying it with multiple types
@@ -145,8 +207,7 @@ summary(interaction_system)
 
 ```{r}
 full_no_int_system <- lmer(total_score ~ selection_system + Year + outside + court_lower +  court_upper + 
-                           RepublicanLegslature + SplitLegislature +
-                           Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+                           Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
                            data = selection_sys_data)
 
 summary(full_no_int_system)
@@ -155,8 +216,7 @@ summary(full_no_int_system)
 
 ```{r}
 full_int_system <- lmer(total_score ~ selection_system * outside + Year + court_lower +  court_upper + 
-                           RepublicanLegslature + SplitLegislature +
-                           Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+                           Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
                            data = selection_sys_data)
 
 summary(full_int_system)
@@ -195,24 +255,24 @@ stargazer(interaction_change, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-controls_change <- lmer(total_score ~ Elected + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+controls_change <- lmer(total_score ~ Elected + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = change_data)
 stargazer(controls_change, type = "text", report = ('vc*p'))
 ```
 
 
 ```{r}
-full_int_change <- lmer(total_score ~ Elected * outside +  RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_int_change <- lmer(total_score ~ Elected * outside +  
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = change_data)
 
 stargazer(full_int_change, type = "text", report = ('vc*p'))
 ```
 
 ```{r}
-full_no_int_change <- lmer(total_score ~ Elected + outside + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_no_int_change <- lmer(total_score ~ Elected + outside + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = change_data)
 
 stargazer(full_no_int_change, type = "text", report = ('vc*p'))
@@ -267,16 +327,16 @@ stargazer(interaction_refined, type = "text", report = ('vc*p'))
 
 Only professional is sig
 ```{r}
-controls_refined <- lmer(total_score ~ MoreDefined + Year + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+controls_refined <- lmer(total_score ~ MoreDefined + Year + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 stargazer(controls_refined, type = "text", report = ('vc*p'))
 ```
 
 Only professionalization
 ```{r}
-full_int_refined <- lmer(total_score ~ MoreDefined * outside + Year + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_int_refined <- lmer(total_score ~ MoreDefined * outside + Year + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_int_refined, type = "text", report = ('vc*p'))
@@ -285,8 +345,8 @@ stargazer(full_int_refined, type = "text", report = ('vc*p'))
 
 only professionalization
 ```{r}
-full_no_int_refined <- lmer(total_score ~ MoreDefined + Year + outside + RepublicanLegslature + SplitLegislature +
-             Moralistic + Traditionalistic + Professionalization + (1 | Fullstate),
+full_no_int_refined <- lmer(total_score ~ MoreDefined + Year + outside + 
+             Individualistic + Traditionalistic + Professionalization + (1 | Fullstate),
              data = data)
 
 stargazer(full_no_int_refined, type = "text", report = ('vc*p'))
@@ -313,6 +373,8 @@ data %>%
   theme_minimal() +
   labs(x = "Net Sentiment", y = "", color = "Selection System",
        caption = "Black line: Selection Mean \n Red Lines: 1 Standard Deviation")
+
+ggsave("diagnostics.jpeg")
 ```
 
 
