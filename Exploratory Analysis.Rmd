@@ -17,8 +17,13 @@ library(tidytext)
 library(readxl)
 library(statebins)
 library(geofacet)
+library(textdata)
 
 theme_set(theme_light())
+
+lexicon_afinn()
+lexicon_bing()
+lexicon_loughran()
 ```
 
 ```{r}
@@ -200,7 +205,7 @@ I noticed that words like "Supreme" are getting classified as positive, when tha
 
 ```{r}
 # word_afinn <- sentiments_afinn_gavel %>%
-#   count(word, score, sort = TRUE)
+#   count(word, value, sort = TRUE)
 
 # write_csv(word_afinn, "afinn words.csv", na = "")
 ```
@@ -264,11 +269,6 @@ tidy_bing_custom_stop <- tidy_text %>%
 ```
 
 
-```{r}
-tidy_nrc_custom_stop <- tidy_text %>%
-  anti_join(custom_nrc_stop_words, by = "word") %>%
-  inner_join(get_sentiments("nrc"))
-```
 
 
 ### Custom stop words datasets
@@ -291,22 +291,22 @@ tidy_afinn_custom_stop %>%
 
 ```{r}
 t_words <- tidy_afinn_custom_stop %>%
-  count(score, Year, Elected) %>%
-  mutate(weighted_score = score * n) %>%
+  count(value, Year, Elected) %>%
+  mutate(weighted_value = value * n) %>%
   group_by(Year, Elected) %>%
   summarize(all_words = sum(n))
 
 
 tidy_afinn_custom_stop %>%
-  count(score, Year, Elected) %>%
-  mutate(weighted_score = score * n) %>% 
-  spread(score, n, fill = 0) %>%
-  select(Year, Elected, weighted_score) %>%
+  count(value, Year, Elected) %>%
+  mutate(weighted_value = value * n) %>% 
+  spread(value, n, fill = 0) %>%
+  select(Year, Elected, weighted_value) %>%
   group_by(Year, Elected) %>%
-  summarize(total_score = sum(weighted_score)) %>%
+  summarize(total_value = sum(weighted_value)) %>%
   left_join(t_words, by = c("Year", "Elected")) %>%
-  mutate(proportion_score = total_score / all_words) %>%
-  ggplot(aes(x = Year, y = proportion_score, fill = total_score > 0)) +
+  mutate(proportion_value = total_value / all_words) %>%
+  ggplot(aes(x = Year, y = proportion_value, fill = total_value > 0)) +
   geom_col() +
   facet_wrap(~Elected)
 ```
@@ -507,9 +507,10 @@ tidy_bing_custom_stop %>%
          net_sentiment = sentiment * n) %>%
   add_count(Year, Elected) %>%
   group_by(Year, Elected) %>%
-  mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
-  ggplot(aes(x = Year, y = total_score, color = Elected)) +
+  # mutate(proportional_sentiment = net_sentiment / n) %>%
+  # summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_value, color = Elected)) +
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
   labs(y = "Net Sentiment", caption = "Using Bing Dictionary", color = "Selection System")
@@ -527,8 +528,8 @@ tidy_bing_custom_stop %>%
   add_count(Year, outside, Elected) %>%
   group_by(Year, outside, Elected) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
-  ggplot(aes(x = Year, y = total_score, color = Elected, lty = as.factor(outside))) +
+  summarize(total_value = sum(proportional_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_value, color = Elected, lty = as.factor(outside))) +
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
   labs(y = "Net Sentiment", lty = "Ideologically Distant?", caption = "Using Bing Dictionary")
@@ -544,8 +545,9 @@ tidy_bing_custom_stop %>%
   ungroup() %>%
   mutate(outside = ifelse(outside == 1, "Distant", "Not Distant")) %>%
   group_by(Year, outside, Elected) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
-  ggplot(aes(x = Year, y = total_score, color = Elected)) +
+  # summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_value, color = Elected)) +
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
   labs(y = "Net Sentiment", color = "Selection System", caption = "Using Bing Dictionary") +
@@ -597,9 +599,9 @@ tidy_bing_custom_stop %>%
   add_count(Type) %>%
   group_by(Type) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
-  mutate(Type = fct_reorder(Type, total_score)) %>%
-  ggplot(aes(x = Type, y = total_score)) +
+  summarize(total_value = sum(proportional_sentiment)) %>%
+  mutate(Type = fct_reorder(Type, total_value)) %>%
+  ggplot(aes(x = Type, y = total_value)) +
   geom_col() +
   labs(x = "Bill Type", y = "Net Sentiment", caption = "Using Bing Dictionary") +
   coord_flip()
@@ -616,11 +618,12 @@ tidy_bing_custom_stop %>%
          net_sentiment = sentiment * n) %>%
   add_count(Type, Elected) %>%
   group_by(Type, Elected) %>%
-  mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
+  # mutate(proportional_sentiment = net_sentiment / n) %>%
+  # summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment)) %>%
   ungroup() %>%
-  mutate(Type = fct_reorder(Type, total_score)) %>%
-  ggplot(aes(x = Type, y = total_score, fill = Elected)) +
+  mutate(Type = fct_reorder(Type, total_value)) %>%
+  ggplot(aes(x = Type, y = total_value, fill = Elected)) +
   geom_col(position = "dodge") +
   labs(x = "", y = "Net Sentiment", fill = "Selection System") +
   coord_flip()
@@ -642,10 +645,10 @@ tidy_bing_custom_stop %>%
   add_count(curbing) %>%
   group_by(curbing) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(proportional_sentiment)) %>%
   ungroup() %>%
   filter(!is.na(curbing)) %>%
-  ggplot(aes(x = as.factor(curbing), y = total_score, fill = as.factor(curbing))) +
+  ggplot(aes(x = as.factor(curbing), y = total_value, fill = as.factor(curbing))) +
   geom_col() +
   coord_cartesian(ylim = c(-2, 2)) +
   labs(fill = "court curbing")
@@ -664,10 +667,10 @@ tidy_bing_custom_stop %>%
   add_count(curbing, Elected) %>%
   group_by(curbing, Elected) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(proportional_sentiment)) %>%
   ungroup() %>%
   filter(!is.na(curbing)) %>%
-  ggplot(aes(x = Elected, y = total_score, fill = as.factor(curbing))) +
+  ggplot(aes(x = Elected, y = total_value, fill = as.factor(curbing))) +
   geom_col(position = "dodge") +
   coord_cartesian(ylim = c(-2, 2)) +
   labs(fill = "Court Curbing")
@@ -714,9 +717,9 @@ tidy_bing_custom_stop %>%
   add_count(Year, Elected) %>%
   group_by(Year, Elected, State) %>%
   mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(proportional_sentiment)) %>%
   statebins_continuous(state_col = "State",
-                     text_color = "white", value_col = "total_score",
+                     text_color = "white", value_col = "total_value",
                      brewer_pal="Reds", font_size = 3,
                      legend_title="Test")
 ```
@@ -729,15 +732,16 @@ tidy_bing_custom_stop %>%
          net_sentiment = sentiment * n) %>%
   add_count(Year, Elected) %>%
   group_by(Year, Elected, State) %>%
-  mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) %>%
+  # mutate(proportional_sentiment = net_sentiment / n) %>%
+  # summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment)) %>%
   arrange(State) %>%
-  ggplot(aes(x = Year, y = total_score, color = Elected)) +
+  ggplot(aes(x = Year, y = total_value, color = Elected)) +
   geom_line() +
   theme_bw() +
   labs(y = "Net Sentiment", color = "Selection System") +
   scale_x_continuous(breaks = c(2008, 2012, 2016), labels = c("'08", "'12", "1'6")) +
-  scale_y_continuous(breaks = c(0, -.2)) +
+  # scale_y_continuous(breaks = c(0, -.2)) +
   facet_geo(~State, grid =  "us_state_grid3")
 
 # ggsave("facet_geo of sentiment over space and time.jpeg")
@@ -751,12 +755,13 @@ tidy_bing_custom_stop %>%
   filter(word != "crime") %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
   add_count(Professionalization) %>%
-  group_by(Professionalization, n) %>%
+  group_by(Professionalization, n, Elected) %>%
   summarize(total_sentiment = sum(sentiment)) %>%
   ungroup() %>%
-  mutate(proportional_sentiment = total_sentiment / n) %>%
-  ggplot(aes(x = Professionalization, y = proportional_sentiment)) +
-  geom_col() +
+  # mutate(proportional_sentiment = total_sentiment / n) %>%
+  # ggplot(aes(x = Professionalization, y = proportional_sentiment)) +
+  ggplot(aes(x = Professionalization, y = total_sentiment, fill = Elected)) +
+  geom_col(position = "dodge") +
   labs(x = "Level of Professionalization", y = "Net Sentiment")
 
 # ggsave("professionalization.jpeg")
@@ -771,13 +776,14 @@ tidy_bing_custom_stop %>%
                           ifelse(Traditionalistic == 1, "Traditionalistic",
                                  "Individualistic"))) %>%
   add_count(culture) %>% 
-  group_by(culture, n) %>%
+  group_by(culture, n, Elected) %>%
   summarize(total_sentiment = sum(sentiment)) %>%
   ungroup() %>%
-  mutate(proportional_sentiment = total_sentiment / n) %>%
+  # mutate(proportional_sentiment = total_sentiment / n) %>%
   filter(!(is.na(culture))) %>%
-  ggplot(aes(x = culture, y = proportional_sentiment)) +
-  geom_col() +
+  # ggplot(aes(x = culture, y = proportional_sentiment)) +
+  ggplot(aes(x = culture, y = total_sentiment, fill = Elected)) +
+  geom_col(position = "dodge") +
   labs(x = "Political Culture", y = "Net Sentiment")
 
 # ggsave("political culture.jpeg")
@@ -812,10 +818,11 @@ ols_data <- tidy_bing_custom_stop %>%
   count(sentiment, Year, Elected, word, Fullstate) %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
          net_sentiment = sentiment * n) %>%
-  add_count(Year, Elected) %>%
+  # add_count(Year, Elected) %>%
   group_by(Year, Elected, Fullstate) %>%
-  mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_score = sum(proportional_sentiment)) 
+  # mutate(proportional_sentiment = net_sentiment / n) %>%
+  # summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment))
 ```
 
 Preparing an object for ideology
@@ -835,8 +842,104 @@ ols_data <- ols_data %>%
   left_join(professional, by = c("Fullstate" = "State")) %>%
   left_join(ideology, by = c("Fullstate", "Year"))
 
-write.csv(ols_data, "model_data.csv")
+# write.csv(ols_data, "model_data.csv")
 ```
+
+
+
+
+
+
+## Weighted Log Odds
+
+```{r}
+library(remotes)
+install_github("juliasilge/tidylo")
+library(tidylo)
+```
+
+```{r}
+word_count <- tidy_afinn_custom_stop %>%
+  count(MoreDefined, word, sort = TRUE)
+```
+
+
+```{r}
+more_defined_log_odds <- word_count %>%
+  bind_log_odds(MoreDefined, word, n) %>%
+  arrange(desc(log_odds))
+
+more_defined_log_odds %>%
+  group_by(MoreDefined) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, MoreDefined)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = MoreDefined)) +
+  geom_col() +
+  facet_wrap(~ MoreDefined, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+```{r}
+word_count_broad <- tidy_afinn_custom_stop %>%
+  count(Elected,  word, sort = TRUE)
+
+broad_log_odds <- word_count_broad %>%
+  bind_log_odds(Elected, word, n) %>%
+  arrange(desc(log_odds))
+  
+broad_log_odds %>%
+  group_by(Elected) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, Elected)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~ Elected, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+
+```{r}
+broad_log_odds %>%
+  group_by(Elected) %>%
+  top_n(25, n) %>%
+  ggplot(aes(x = n, y = log_odds, label = word, color = Elected)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", lty = 2) +
+  ggrepel::geom_text_repel() +
+  scale_x_log10() +
+  facet_wrap(~ Elected, scales = "free_x")
+```
+
+
+### Bill Type Log Odds
+
+```{r}
+bill_type <- gavel %>%
+  select(Fullstate, Type, Description) %>%
+  unnest_tokens(word, Description) %>%
+  count(word, Type, Fullstate, sort = TRUE)
+
+bill_type_log_odds <- bill_type %>%
+  bind_log_odds(Type, word, n) %>%
+  arrange(desc(log_odds))
+
+bill_type_log_odds %>%
+  group_by(Type) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, Type)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = Type)) +
+  geom_col() +
+  facet_wrap(~ Type, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+
 
 
 

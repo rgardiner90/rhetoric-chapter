@@ -73,10 +73,13 @@ full_no_int <- lmer(total_score ~ Elected + Year + outside +
 stargazer(full_no_int, type = "text", report = ('vc*p'))
 ```
 
+```{r}
+stargazer(ideology, interaction, controls, full_int, full_no_int, type = "text")
+```
 
 
 
-## Trying series with other ideology term
+## Trying series with other ideology term (this is the one in the final model)
 
 ```{r}
 ideology2 <- lmer(total_score ~ Elected + Year + court_lower + court_upper + (1 | Fullstate),
@@ -108,6 +111,8 @@ full_int2 <- lmer(total_score ~ Elected * court_lower + Year + Elected * court_u
 stargazer(full_int2, type = "text", report = ('vc*p'))
 ```
 
+
+## Final Models:
 
 
 ```{r}
@@ -221,6 +226,13 @@ full_int_system <- lmer(total_score ~ selection_system * outside + Year + court_
 
 summary(full_int_system)
 ```
+
+```{r}
+# stargazer(basic, ideology_system, interaction_system, full_no_int_system,
+#           full_int_system, type = "html", out = "selection system models (variation).doc")
+```
+
+
 
 ## Net Change Analysis
 
@@ -351,6 +363,12 @@ full_no_int_refined <- lmer(total_score ~ MoreDefined + Year + outside +
 
 stargazer(full_no_int_refined, type = "text", report = ('vc*p'))
 ```
+
+
+```{r}
+stargazer(interaction_refined, controls_refined, full_int_refined, full_no_int_refined, type = "text")
+```
+
 
 ### Diagnostics
 
