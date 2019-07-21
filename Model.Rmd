@@ -24,7 +24,8 @@ data <- read_csv("model_data.csv") %>%
          Fullstate = factor(Fullstate),
          court_lower = abs(judicial - lower),
          court_upper = abs(judicial - upper),
-         Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0))
+         Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0)) %>%
+  rename(total_score = total_value)
 ```
 
 ```{r}
@@ -394,5 +395,156 @@ data %>%
 
 ggsave("diagnostics.jpeg")
 ```
+
+
+
+
+## Post Steigerwalt Meeting:
+
+Take out the lmer, add in fixed effects, take out year.
+
+```{r}
+elected_new <- lm(total_score ~ Elected + Year +  Fullstate,
+             data = data)
+# stargazer(elected_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+ideology_new <- lm(total_score ~ Elected + Year + outside + Fullstate,
+             data = data)
+
+# stargazer(ideology_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+interaction_new <- lm(total_score ~ Elected + Year + outside + Elected * outside + Fullstate,
+             data = data)
+
+# stargazer(interaction_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+controls_new <- lm(total_score ~ Elected + Year + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = data)
+# stargazer(controls_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+full_int_new <- lm(total_score ~ Elected * outside + Year + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = data)
+
+# stargazer(full_int_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+full_no_int_new <- lm(total_score ~ Elected + Year + outside + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = data)
+
+# stargazer(full_no_int_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+stargazer(elected_new, ideology_new, interaction_new, controls_new, 
+          full_int_new, full_no_int_new, type = "text", report = ('vc*p'))
+```
+
+
+
+
+#### Curbing Models
+
+```{r}
+curbing <- read_csv("curbing_model_data.csv")
+
+abbreviation <- read_csv("selection system.csv") %>%
+  distinct(Fullstate, State, MoreDefined)
+
+legislative_control <- read_excel("Legislative Control.xlsx")
+
+political_culture <- read_csv("political culture.csv")
+
+professionalization <- read_csv("ncsl professionalization.csv")
+  
+outside_ideology <- data %>%
+  select(Fullstate, Year, outside)
+
+curbing_data <- curbing %>%
+  left_join(abbreviation, by = "State") %>%
+  select(-X1) %>%
+  left_join(legislative_control, 
+            by = c("Fullstate" = "State", "Year")) %>%
+  left_join(political_culture, by = c("Fullstate" = "State")) %>%
+  left_join(professionalization, by = c("Fullstate" = "State")) %>%
+  left_join(outside_ideology, by = c("Fullstate", "Year")) %>%
+  mutate(Elected = ifelse(MoreDefined == "Appointment", 0, 1),
+         Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0))
+
+```
+
+
+
+
+```{r}
+curbing_elected_new <- lm(total_sentiment ~ Elected + Year +  Fullstate,
+             data = curbing_data)
+# stargazer(curbing_elected_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+curbing_ideology_new <- lm(total_sentiment ~ Elected + Year + outside + Fullstate,
+             data = curbing_data)
+
+# stargazer(curbing_ideology_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+curbing_interaction_new <- lm(total_sentiment ~ Elected + Year + outside + Elected * outside + Fullstate,
+             data = curbing_data)
+
+# stargazer(curbing_interaction_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+curbing_controls_new <- lm(total_sentiment ~ Elected + Year + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = curbing_data)
+# stargazer(curbing_controls_new, type = "text", report = ('vc*p'))
+```
+
+
+```{r}
+curbing_full_int_new <- lm(total_sentiment ~ Elected * outside + Year + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = curbing_data)
+
+# stargazer(curbing_full_int_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+curbing_full_no_int_new <- lm(total_sentiment ~ Elected + Year + outside + 
+             Individualistic + Traditionalistic + Professionalization + Fullstate,
+             data = curbing_data)
+
+# stargazer(curbing_full_no_int_new, type = "text", report = ('vc*p'))
+```
+
+```{r}
+stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, curbing_controls_new, 
+          curbing_full_int_new, curbing_full_no_int_new, type = "text", report = ('vc*p'))
+```
+
+
+
+
+
+
 
 

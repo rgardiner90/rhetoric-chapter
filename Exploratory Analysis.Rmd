@@ -17,6 +17,7 @@ library(tidytext)
 library(readxl)
 library(statebins)
 library(geofacet)
+library(cowplot)
 library(textdata)
 
 theme_set(theme_light())
@@ -72,14 +73,27 @@ gavel %>%
 
 Bills by Type
 ```{r}
-gavel %>%
+curbing_type <- gavel %>%
+  filter(curbing == 1) %>%
   count(Type) %>%
   filter(Type != "No Legislation") %>%
   mutate(Type = fct_reorder(Type, n)) %>%
   ggplot(aes(x = Type, y = n)) +
   geom_col() +
-  labs(x = "", y = "Number of Bills") +
-  coord_flip() 
+  labs(x = "", y = "Number of Bills", title = "Court Curbing Bills") +
+  coord_flip()
+
+not_curbing_type <- gavel %>%
+  filter(curbing == 0) %>%
+  count(Type) %>%
+  filter(Type != "No Legislation") %>%
+  mutate(Type = fct_reorder(Type, n)) %>%
+  ggplot(aes(x = Type, y = n)) +
+  geom_col() +
+  labs(x = "", y = "Number of Bills", title = "All Other Bills") +
+  coord_flip()
+
+plot_grid(curbing_type, not_curbing_type)
 
 # ggsave("Number of Bills by Type.jpeg")
 ```
@@ -479,6 +493,112 @@ bigrams_count %>%
 
 
 
+## Weighted Log Odds
+
+```{r}
+library(remotes)
+install_github("juliasilge/tidylo")
+library(tidylo)
+```
+
+```{r}
+word_count <- tidy_afinn_custom_stop %>%
+  count(MoreDefined, word, sort = TRUE)
+```
+
+
+```{r}
+more_defined_log_odds <- word_count %>%
+  bind_log_odds(MoreDefined, word, n) %>%
+  arrange(desc(log_odds))
+
+more_defined_log_odds %>%
+  group_by(MoreDefined) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, MoreDefined)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = MoreDefined)) +
+  geom_col() +
+  facet_wrap(~ MoreDefined, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+```{r}
+word_count_broad <- tidy_afinn_custom_stop %>%
+  count(Elected,  word, sort = TRUE)
+
+broad_log_odds <- word_count_broad %>%
+  bind_log_odds(Elected, word, n) %>%
+  arrange(desc(log_odds))
+  
+broad_log_odds %>%
+  group_by(Elected) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, Elected)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = Elected)) +
+  geom_col() +
+  facet_wrap(~ Elected, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+
+```{r}
+broad_log_odds %>%
+  group_by(Elected) %>%
+  top_n(25, n) %>%
+  ggplot(aes(x = n, y = log_odds, label = word, color = Elected)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", lty = 2) +
+  ggrepel::geom_text_repel() +
+  scale_x_log10() +
+  facet_wrap(~ Elected, scales = "free_x")
+```
+
+
+### Bill Type Log Odds
+
+```{r}
+bill_type <- gavel %>%
+  select(Fullstate, Type, Description) %>%
+  unnest_tokens(word, Description) %>%
+  count(word, Type, Fullstate, sort = TRUE)
+
+bill_type_log_odds <- bill_type %>%
+  bind_log_odds(Type, word, n) %>%
+  arrange(desc(log_odds))
+
+bill_type_log_odds %>%
+  group_by(Type) %>%
+  top_n(20, log_odds) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, log_odds, Type)) %>%
+  ggplot(aes(x = word, y = log_odds, fill = Type)) +
+  geom_col() +
+  facet_wrap(~ Type, scales = "free_y") +
+  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
+  coord_flip()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## ACTUALLY SUPPORTIVE GRAPHS
 
@@ -710,19 +830,20 @@ tidy_bing_custom_stop %>%
 
 ```{r}
 tidy_bing_custom_stop %>%
-  filter(word != "crime") %>%
   count(sentiment, Year, Elected, word, State) %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
          net_sentiment = sentiment * n) %>%
-  add_count(Year, Elected) %>%
   group_by(Year, Elected, State) %>%
-  mutate(proportional_sentiment = net_sentiment / n) %>%
-  summarize(total_value = sum(proportional_sentiment)) %>%
+  summarize(total_value = sum(net_sentiment)) %>%
   statebins_continuous(state_col = "State",
                      text_color = "white", value_col = "total_value",
                      brewer_pal="Reds", font_size = 3,
-                     legend_title="Test")
+                     legend_title="Test") 
 ```
+
+
+
+
 
 ```{r}
 tidy_bing_custom_stop %>%
@@ -747,22 +868,29 @@ tidy_bing_custom_stop %>%
 # ggsave("facet_geo of sentiment over space and time.jpeg")
 ```
 
+
+
+
 #### Control Variables
 
 Professional
 ```{r}
 tidy_bing_custom_stop %>%
-  filter(word != "crime") %>%
+  # filter(word != "crime") %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
-  add_count(Professionalization) %>%
-  group_by(Professionalization, n, Elected) %>%
+  # add_count(Professionalization) %>%
+  group_by(State, Professionalization) %>%
   summarize(total_sentiment = sum(sentiment)) %>%
   ungroup() %>%
+  group_by(Professionalization) %>%
+  summarise(mean_sentiment = mean(total_sentiment)) %>%
   # mutate(proportional_sentiment = total_sentiment / n) %>%
   # ggplot(aes(x = Professionalization, y = proportional_sentiment)) +
-  ggplot(aes(x = Professionalization, y = total_sentiment, fill = Elected)) +
-  geom_col(position = "dodge") +
-  labs(x = "Level of Professionalization", y = "Net Sentiment")
+  ggplot(aes(x = factor(Professionalization), y = mean_sentiment)) +
+  geom_col() +
+  labs(x = "Level of Professionalization", y = "Mean Net Sentiment") +
+  scale_x_discrete(breaks = c(1, 2, 3, 4, 5),
+                   labels = c("Least \nProfessional", "2", "3", "4", "Most \nProfessional"))
 
 # ggsave("professionalization.jpeg")
 ```
@@ -770,21 +898,28 @@ tidy_bing_custom_stop %>%
 political culture
 ```{r}
 tidy_bing_custom_stop %>%
-  filter(word != "crime") %>%
+  # filter(word != "crime") %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1),
          culture = ifelse(Moralistic  == 1, "Moralistic",
                           ifelse(Traditionalistic == 1, "Traditionalistic",
                                  "Individualistic"))) %>%
-  add_count(culture) %>% 
-  group_by(culture, n, Elected) %>%
+  group_by(culture, State) %>%
   summarize(total_sentiment = sum(sentiment)) %>%
   ungroup() %>%
-  # mutate(proportional_sentiment = total_sentiment / n) %>%
   filter(!(is.na(culture))) %>%
+  group_by(culture) %>%
+  summarise(mean_sentiment = mean(total_sentiment)) %>%
+  spread(culture, mean_sentiment) %>%
+  mutate(diff_individual = (Individualistic - Moralistic),
+         diff_traditional = (Traditionalistic - Moralistic)) %>%
+  select(-Individualistic, -Moralistic, -Traditionalistic) %>%
+  gather(type, value) %>%
   # ggplot(aes(x = culture, y = proportional_sentiment)) +
-  ggplot(aes(x = culture, y = total_sentiment, fill = Elected)) +
-  geom_col(position = "dodge") +
-  labs(x = "Political Culture", y = "Net Sentiment")
+  ggplot(aes(x = factor(type), y = value)) +
+  geom_col() +
+  labs(x = "Political Culture", 
+       y = "Differences in Mean Net Sentiment") +
+  scale_x_discrete(labels = c("Individualistic - Moralistic", "Traditionalistic - Moralistic"))
 
 # ggsave("political culture.jpeg")
 ```
@@ -846,103 +981,25 @@ ols_data <- ols_data %>%
 ```
 
 
-
-
-
-
-## Weighted Log Odds
+## Data for OLS of curbing
 
 ```{r}
-library(remotes)
-install_github("juliasilge/tidylo")
-library(tidylo)
-```
-
-```{r}
-word_count <- tidy_afinn_custom_stop %>%
-  count(MoreDefined, word, sort = TRUE)
-```
-
-
-```{r}
-more_defined_log_odds <- word_count %>%
-  bind_log_odds(MoreDefined, word, n) %>%
-  arrange(desc(log_odds))
-
-more_defined_log_odds %>%
-  group_by(MoreDefined) %>%
-  top_n(20, log_odds) %>%
-  ungroup() %>%
-  mutate(word = reorder_within(word, log_odds, MoreDefined)) %>%
-  ggplot(aes(x = word, y = log_odds, fill = MoreDefined)) +
-  geom_col() +
-  facet_wrap(~ MoreDefined, scales = "free_y") +
-  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
-  coord_flip()
-```
-
-```{r}
-word_count_broad <- tidy_afinn_custom_stop %>%
-  count(Elected,  word, sort = TRUE)
-
-broad_log_odds <- word_count_broad %>%
-  bind_log_odds(Elected, word, n) %>%
-  arrange(desc(log_odds))
-  
-broad_log_odds %>%
-  group_by(Elected) %>%
-  top_n(20, log_odds) %>%
-  ungroup() %>%
-  mutate(word = reorder_within(word, log_odds, Elected)) %>%
-  ggplot(aes(x = word, y = log_odds, fill = Elected)) +
-  geom_col() +
-  facet_wrap(~ Elected, scales = "free_y") +
-  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
-  coord_flip()
-```
-
-
-```{r}
-broad_log_odds %>%
-  group_by(Elected) %>%
-  top_n(25, n) %>%
-  ggplot(aes(x = n, y = log_odds, label = word, color = Elected)) +
-  geom_point() +
-  geom_hline(yintercept = 0, color = "red", lty = 2) +
-  ggrepel::geom_text_repel() +
-  scale_x_log10() +
-  facet_wrap(~ Elected, scales = "free_x")
-```
-
-
-### Bill Type Log Odds
-
-```{r}
-bill_type <- gavel %>%
-  select(Fullstate, Type, Description) %>%
+tidy_text_curbing <- gavel %>%
+  filter(curbing == 1) %>%
   unnest_tokens(word, Description) %>%
-  count(word, Type, Fullstate, sort = TRUE)
+  anti_join(stop_words)
 
-bill_type_log_odds <- bill_type %>%
-  bind_log_odds(Type, word, n) %>%
-  arrange(desc(log_odds))
-
-bill_type_log_odds %>%
-  group_by(Type) %>%
-  top_n(20, log_odds) %>%
+court_curbing_text <- tidy_text_curbing %>%
+  anti_join(custom_bing_stop_words, by = "word") %>%
+  inner_join(get_sentiments("bing")) %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
+  group_by(State, Year) %>%
+  summarise(total_sentiment = sum(sentiment)) %>%
   ungroup() %>%
-  mutate(word = reorder_within(word, log_odds, Type)) %>%
-  ggplot(aes(x = word, y = log_odds, fill = Type)) +
-  geom_col() +
-  facet_wrap(~ Type, scales = "free_y") +
-  scale_x_discrete(labels = function(x) str_remove(x, "\\___.*")) +
-  coord_flip()
+  complete(Year, State, fill = list(total_sentiment = 0))
+
+# write.csv(court_curbing_text, "curbing_model_data.csv")
 ```
-
-
-
-
-
 
 
 
