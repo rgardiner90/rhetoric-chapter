@@ -16,6 +16,7 @@ library(stargazer)
 library(lme4)
 library(car)
 library(modelr)
+library(readxl)
 
 theme_set(theme_light())
 
@@ -452,6 +453,64 @@ full_no_int_new <- lm(total_score ~ Elected + Year + outside +
 ```{r}
 stargazer(elected_new, ideology_new, interaction_new, controls_new, 
           full_int_new, full_no_int_new, type = "text", report = ('vc*p'))
+
+# stargazer(elected_new, ideology_new, interaction_new, controls_new, 
+#           full_int_new, full_no_int_new, type = "html", report = ('vc*p'), out = "main model outputs")
+```
+
+
+```{r}
+data %>%
+  data_grid(Elected, .model = elected_new) %>%
+  add_predictions(elected_new) %>%
+  group_by(Elected) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  ggplot(aes(x = Elected, y = mean_pred)) +
+  geom_col() +
+  labs(x = "Selection System", y = "Mean Predicted Net Sentiment",
+       caption = "Using Elected Model") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("elected model prediction.jpeg")
+```
+
+```{r}
+data %>%
+  data_grid(Professionalization, .model = full_int_new) %>%
+  filter(Fullstate != "Kansas") %>%
+  add_predictions(full_int_new) %>%
+  group_by(Professionalization) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  ggplot(aes(x = factor(Professionalization), y = mean_pred)) +
+  geom_col() +
+  scale_x_discrete(labels = c("Least", "", "", "", "Most")) +
+  labs(x = "Level of Professionalization", y = "Mean Predicted Net Sentiment",
+       caption = "Using the Full Model") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("full model predcition professionalization.jpeg")
+```
+
+
+```{r}
+data %>%
+  data_grid(Traditionalistic, .model = full_int_new) %>%
+  filter(Fullstate != "Kansas") %>%
+  add_predictions(full_int_new) %>%
+  group_by(Traditionalistic) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  filter(!is.na(Traditionalistic)) %>%
+  ggplot(aes(x = factor(Traditionalistic), y = mean_pred)) +
+  geom_col() +
+  scale_x_discrete(labels = c("Moralistic", "Traditionalistic")) +
+  labs(x = "", y = "Mean Predicted Net Sentiment",
+       caption = "Using the Full Model") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("full model prediction traditionalistic.jpeg")
 ```
 
 
@@ -543,6 +602,61 @@ stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, cu
 
 
 
+
+```{r}
+curbing_data %>%
+  data_grid(Elected, .model = curbing_elected_new) %>%
+  add_predictions(curbing_elected_new) %>%
+  group_by(Elected) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  ggplot(aes(x = Elected, y = mean_pred)) +
+  geom_col() +
+  labs(x = "Selection System", y = "Mean Predicted Net Sentiment",
+       caption = "Using Elected Model - Court Curbing") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("elected model prediction - curbs.jpeg")
+```
+
+```{r}
+curbing_data %>%
+  data_grid(Professionalization, .model = curbing_full_int_new) %>%
+  filter(Fullstate != "Kansas") %>%
+  add_predictions(curbing_full_int_new) %>%
+  group_by(Professionalization) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  ggplot(aes(x = factor(Professionalization), y = mean_pred)) +
+  geom_col() +
+  scale_x_discrete(labels = c("Least", "", "", "", "Most")) +
+  scale_y_continuous(breaks = seq(-3, 7, 1), limits = c(-3, 7)) +
+  labs(x = "Level of Professionalization", y = "Mean Predicted Net Sentiment",
+       caption = "Using the Full Model - Court Curbing") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("full model predcition professionalization - curbs.jpeg")
+```
+
+
+```{r}
+curbing_data %>%
+  data_grid(Traditionalistic, .model = curbing_full_int_new) %>%
+  filter(Fullstate != "Kansas") %>%
+  add_predictions(curbing_full_int_new) %>%
+  group_by(Traditionalistic) %>%
+  summarise(mean_pred = mean(pred)) %>%
+  ungroup() %>%
+  filter(!is.na(Traditionalistic)) %>%
+  ggplot(aes(x = factor(Traditionalistic), y = mean_pred)) +
+  geom_col() +
+  scale_x_discrete(labels = c("Moralistic", "Traditionalistic")) +
+  labs(x = "", y = "Mean Predicted Net Sentiment - Court Curbing",
+       caption = "Using the Full Model") +
+  geom_hline(yintercept = 0, lty = 2, color = "red")
+
+# ggsave("full model prediction traditionalistic - curbs.jpeg")
+```
 
 
 
