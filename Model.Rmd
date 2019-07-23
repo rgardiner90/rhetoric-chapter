@@ -651,8 +651,8 @@ curbing_data %>%
   ggplot(aes(x = factor(Traditionalistic), y = mean_pred)) +
   geom_col() +
   scale_x_discrete(labels = c("Moralistic", "Traditionalistic")) +
-  labs(x = "", y = "Mean Predicted Net Sentiment - Court Curbing",
-       caption = "Using the Full Model") +
+  labs(x = "", y = "Mean Predicted Net Sentiment",
+       caption = "Using the Full Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
 # ggsave("full model prediction traditionalistic - curbs.jpeg")
