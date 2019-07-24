@@ -547,6 +547,44 @@ curbing_data <- curbing %>%
 ```
 
 
+```{r}
+curbing_data %>%
+  summarise(sd = sd(total_sentiment))
+
+data %>%
+  summarise(sd = sd(total_score))
+```
+
+
+
+```{r}
+curbing_data %>%
+  group_by(Year) %>%
+  summarise(total_sentiment = mean(total_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_sentiment)) +
+  geom_line() +
+  expand_limits(y = 0) +
+  scale_x_continuous(breaks = seq(2008, 2017, 1)) +
+  labs(y = "Net Sentiment")
+
+ggsave("overall sentiment - curbs.jpeg")
+```
+
+
+```{r}
+curbing_data %>%
+  group_by(Year, Elected) %>%
+  summarise(total_sentiment = mean(total_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_sentiment, color = factor(Elected))) +
+  geom_line() +
+  expand_limits(y = 0) +
+  scale_x_continuous(breaks = seq(2008, 2017, 1)) +
+  labs(y = "Net Sentiment", color = "Selection System") +
+  scale_color_discrete(labels = c("Appointed", "Elected"))
+
+ggsave("overall sentiment by selection - curbs.jpeg")
+```
+
 
 
 ```{r}
@@ -598,6 +636,9 @@ curbing_full_no_int_new <- lm(total_sentiment ~ Elected + Year + outside +
 ```{r}
 stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, curbing_controls_new, 
           curbing_full_int_new, curbing_full_no_int_new, type = "text", report = ('vc*p'))
+
+# stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, curbing_controls_new,
+#           curbing_full_int_new, curbing_full_no_int_new, type = "html", report = ('vc*p'), out = "curbing models.doc")
 ```
 
 
@@ -616,7 +657,7 @@ curbing_data %>%
        caption = "Using Elected Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
-# ggsave("elected model prediction - curbs.jpeg")
+ggsave("elected model prediction - curbs.jpeg")
 ```
 
 ```{r}
@@ -635,7 +676,7 @@ curbing_data %>%
        caption = "Using the Full Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
-# ggsave("full model predcition professionalization - curbs.jpeg")
+ggsave("full model predcition professionalization - curbs.jpeg")
 ```
 
 
@@ -655,7 +696,7 @@ curbing_data %>%
        caption = "Using the Full Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
-# ggsave("full model prediction traditionalistic - curbs.jpeg")
+ggsave("full model prediction traditionalistic - curbs.jpeg")
 ```
 
 
