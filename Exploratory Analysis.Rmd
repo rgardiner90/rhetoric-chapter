@@ -992,16 +992,6 @@ tidy_text_curbing <- gavel %>%
 court_curbing_text <- tidy_text_curbing %>%
   anti_join(custom_bing_stop_words, by = "word") %>%
   inner_join(get_sentiments("bing")) %>%
-  mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
-  group_by(State, Year) %>%
-  summarise(total_sentiment = sum(sentiment)) %>%
-  ungroup() %>%
-  complete(Year, State, fill = list(total_sentiment = 0))
-
-
-court_curbing_text <- tidy_text_curbing %>%
-  anti_join(custom_bing_stop_words, by = "word") %>%
-  inner_join(get_sentiments("bing")) %>%
   filter(word != "crime") %>%
   mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
   count(State, Year, Elected, word, sentiment) %>%
