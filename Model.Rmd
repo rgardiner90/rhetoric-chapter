@@ -120,6 +120,9 @@ stargazer(full_int2, type = "text", report = ('vc*p'))
 ```{r}
 # stargazer(elected, ideology2, interaction2, full_int2, full_no_int2,
 #           type = "html", report = ('vc*p'), out = "model results.doc")
+
+# stargazer(elected, ideology2, interaction2, full_int2, full_no_int2,
+#           type = "html", out = "model results standard error.doc")
 ```
 
 ## Predictions
@@ -456,6 +459,9 @@ stargazer(elected_new, ideology_new, interaction_new, controls_new,
 
 # stargazer(elected_new, ideology_new, interaction_new, controls_new, 
 #           full_int_new, full_no_int_new, type = "html", report = ('vc*p'), out = "main model outputs")
+
+# stargazer(elected_new, ideology_new, interaction_new, controls_new,
+#           full_int_new, full_no_int_new, type = "html", out = "main model outputs standard error.doc")
 ```
 
 
@@ -638,7 +644,7 @@ stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, cu
           curbing_full_int_new, curbing_full_no_int_new, type = "text", report = ('vc*p'))
 
 # stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, curbing_controls_new,
-#           curbing_full_int_new, curbing_full_no_int_new, type = "html", report = ('vc*p'), out = "curbing models.doc")
+#           curbing_full_int_new, curbing_full_no_int_new, type = "html", out = "curbing models standard error.doc")
 ```
 
 
@@ -651,13 +657,14 @@ curbing_data %>%
   group_by(Elected) %>%
   summarise(mean_pred = mean(pred)) %>%
   ungroup() %>%
-  ggplot(aes(x = Elected, y = mean_pred)) +
+  ggplot(aes(x = factor(Elected), y = mean_pred)) +
   geom_col() +
   labs(x = "Selection System", y = "Mean Predicted Net Sentiment",
        caption = "Using Elected Model - Court Curbing") +
-  geom_hline(yintercept = 0, lty = 2, color = "red")
+  geom_hline(yintercept = 0, lty = 2, color = "red") +
+  scale_x_discrete(labels = c("Appointed", "Elected"))
 
-ggsave("elected model prediction - curbs.jpeg")
+# ggsave("elected model prediction - curbs.jpeg")
 ```
 
 ```{r}
@@ -676,27 +683,28 @@ curbing_data %>%
        caption = "Using the Full Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
-ggsave("full model predcition professionalization - curbs.jpeg")
+# ggsave("full model predcition professionalization - curbs.jpeg")
 ```
 
 
 ```{r}
 curbing_data %>%
-  data_grid(Traditionalistic, .model = curbing_full_int_new) %>%
+  data_grid(Individualistic, .model = curbing_full_int_new) %>%
   filter(Fullstate != "Kansas") %>%
   add_predictions(curbing_full_int_new) %>%
-  group_by(Traditionalistic) %>%
+  group_by(Individualistic) %>%
   summarise(mean_pred = mean(pred)) %>%
   ungroup() %>%
-  filter(!is.na(Traditionalistic)) %>%
-  ggplot(aes(x = factor(Traditionalistic), y = mean_pred)) +
+  filter(!is.na(Individualistic)) %>%
+  ggplot(aes(x = factor(Individualistic), y = mean_pred)) +
   geom_col() +
-  scale_x_discrete(labels = c("Moralistic", "Traditionalistic")) +
+  scale_x_discrete(labels = c("Moralistic", "Individualistic")) +
   labs(x = "", y = "Mean Predicted Net Sentiment",
        caption = "Using the Full Model - Court Curbing") +
-  geom_hline(yintercept = 0, lty = 2, color = "red")
+  geom_hline(yintercept = 0, lty = 2, color = "red") +
+  ylim(-1, 1.5)
 
-ggsave("full model prediction traditionalistic - curbs.jpeg")
+ggsave("full model prediction individualistic - curbs.jpeg")
 ```
 
 
