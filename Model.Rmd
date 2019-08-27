@@ -549,7 +549,6 @@ curbing_data <- curbing %>%
   left_join(outside_ideology, by = c("Fullstate", "Year")) %>%
   mutate(Elected = ifelse(MoreDefined == "Appointment", 0, 1),
          Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0))
-
 ```
 
 
@@ -573,7 +572,7 @@ curbing_data %>%
   scale_x_continuous(breaks = seq(2008, 2017, 1)) +
   labs(y = "Net Sentiment")
 
-ggsave("overall sentiment - curbs.jpeg")
+# ggsave("overall sentiment - curbs.jpeg")
 ```
 
 
@@ -588,7 +587,7 @@ curbing_data %>%
   labs(y = "Net Sentiment", color = "Selection System") +
   scale_color_discrete(labels = c("Appointed", "Elected"))
 
-ggsave("overall sentiment by selection - curbs.jpeg")
+# ggsave("overall sentiment by selection - curbs.jpeg")
 ```
 
 
@@ -708,6 +707,47 @@ ggsave("full model prediction individualistic - curbs.jpeg")
 ```
 
 
+## Non-Curbing bills
 
+```{r}
+non_curbing <- read_csv("not_curbing_model_data.csv")
+
+abbreviation <- read_csv("selection system.csv") %>%
+  distinct(Fullstate, State, MoreDefined)
+
+legislative_control <- read_excel("Legislative Control.xlsx")
+
+political_culture <- read_csv("political culture.csv")
+
+professionalization <- read_csv("ncsl professionalization.csv")
+  
+outside_ideology <- data %>%
+  select(Fullstate, Year, outside)
+
+non_curbing_data <- non_curbing %>%
+  left_join(abbreviation, by = "State") %>%
+  select(-X1) %>%
+  left_join(legislative_control, 
+            by = c("Fullstate" = "State", "Year")) %>%
+  left_join(political_culture, by = c("Fullstate" = "State")) %>%
+  left_join(professionalization, by = c("Fullstate" = "State")) %>%
+  left_join(outside_ideology, by = c("Fullstate", "Year")) %>%
+  mutate(Elected = ifelse(MoreDefined == "Appointment", 0, 1),
+         Individualistic = ifelse(Moralistic == 0 & Traditionalistic == 0, 1, 0))
+
+```
+
+Not exactly what I want, so there is that...
+```{r}
+non_curbing_data %>%
+  group_by(Year, Elected) %>%
+  summarise(total_sentiment = mean(total_sentiment)) %>%
+  ggplot(aes(x = Year, y = total_sentiment, color = factor(Elected))) +
+  geom_line() +
+  expand_limits(y = 0) +
+  scale_x_continuous(breaks = seq(2008, 2017, 1)) +
+  labs(y = "Net Sentiment", color = "Selection System") +
+  scale_color_discrete(labels = c("Appointed", "Elected"))
+```
 
 

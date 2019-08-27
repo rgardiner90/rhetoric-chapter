@@ -1009,5 +1009,32 @@ court_curbing_text <- tidy_text_curbing %>%
 # write.csv(court_curbing_text, "curbing_model_data.csv")
 ```
 
+## Data for OLS of not curbing
+
+```{r}
+tidy_text_not_curbing <- gavel %>%
+  filter(curbing == 0) %>%
+  unnest_tokens(word, Description) %>%
+  anti_join(stop_words)
+
+non_court_curbing_text <- tidy_text_not_curbing %>%
+  anti_join(custom_bing_stop_words, by = "word") %>%
+  inner_join(get_sentiments("bing")) %>%
+  filter(word != "crime") %>%
+  mutate(sentiment = ifelse(sentiment == "negative", -1, 1)) %>%
+  count(State, Year, Elected, word, sentiment) %>%
+  mutate(net_sentiment = sentiment * n) %>%
+  group_by(Year, Elected, State) %>%
+  summarise(total_sentiment = sum(sentiment)) %>%
+  ungroup() %>%
+  complete(Year, State, fill = list(total_sentiment = 0)) %>%
+  arrange(State) %>%
+  left_join(tidy_bing_custom_stop %>%
+  distinct(State, Elected), by = "State") %>%
+  select(-Elected.x) %>%
+  rename(Elected = Elected.y)
+
+# write.csv(non_court_curbing_text, "not_curbing_model_data.csv")
+```
 
 
