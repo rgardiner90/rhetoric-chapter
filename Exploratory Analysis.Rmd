@@ -633,6 +633,7 @@ tidy_bing_custom_stop %>%
   ggplot(aes(x = Year, y = total_value, color = Elected)) +
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
+  coord_cartesian(ylim = c(-1500, 1500)) +
   labs(y = "Net Sentiment", caption = "Using Bing Dictionary", color = "Selection System")
 
 # ggsave("Net sentiment by selection.jpeg")
@@ -670,6 +671,7 @@ tidy_bing_custom_stop %>%
   ggplot(aes(x = Year, y = total_value, color = Elected)) +
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
+  coord_cartesian(ylim = c(-1500, 1500)) +
   labs(y = "Net Sentiment", color = "Selection System", caption = "Using Bing Dictionary") +
   facet_wrap(~outside)
 
