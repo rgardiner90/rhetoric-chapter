@@ -17,6 +17,8 @@ library(lme4)
 library(car)
 library(modelr)
 library(readxl)
+library(broom)
+library(dotwhisker)
 
 theme_set(theme_light())
 
@@ -465,6 +467,141 @@ stargazer(elected_new, ideology_new, interaction_new, controls_new,
 ```
 
 
+### Assumptions
+
+Have a problem with normality and non-constant variance, going to use Huber-White standard errors
+```{r}
+library(researchr)
+library(sandwich)
+library(lmtest)
+library(car)
+library(moments)
+
+
+elected_new$call
+
+joke <- lm(total_score ~ Elected + Year + Fullstate, data = data)
+
+
+
+dwt(elected_new) # auto correlation - no problem
+jarque.test(elected_new$residuals) # normality - problem
+ncvTest(elected_new) # non-constant variance - problem
+
+
+dwt(ideology_new)
+
+check_assume <- function(model) {
+  watson <- dwt(model)
+  jarque <- jarque.test(model$residuals)
+  ncv <- ncvTest(model)
+
+  tests <- c("normality", "constant variance", "auto correlation")
+  
+  values <- c(signif(as.numeric(watson$p), 3), signif(as.numeric(ncv$p), 
+        3), signif(as.numeric(jarque$p), 3))
+  
+  problems <- cbind(tests, values)
+  
+  return(problems)
+  }
+
+check_assume(elected_new)
+check_assume(ideology_new)
+check_assume(interaction_new)
+check_assume(controls_new)
+check_assume(full_int_new)
+check_assume(full_no_int_new)
+
+
+summary(full_no_int_new)
+
+
+coeftest(elected_new, vcov = vcovHC)
+coeftest(ideology_new, vcov = vcovHC)
+coeftest(interaction_new, vcov = vcovHC)
+coeftest(controls_new, vcov = vcovHC)
+coeftest(controls_new, vcov = vcovHC)
+coeftest(full_no_int_new, vcov = vcovHC)
+```
+
+
+
+### Predictions
+```{r}
+model7 <- tidy(elected_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Elected",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model8 <- tidy(ideology_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Ideology",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model9 <- tidy(interaction_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Interaction",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model10 <- tidy(controls_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Controls - No Ideology",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model11 <- tidy(full_int_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Full Model",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model12 <- tidy(full_no_int_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Full - no Interaction",
+         term = ifelse(term == "ElectedElected", "Elected", term),
+         term = ifelse(term == "ElectedElected:outside", "Elected * Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+combined_all <- rbind(model7, model8, model9, model10, model11, model12)
+
+dwplot(combined_all) +
+  geom_vline(xintercept = 0, lty = 2, color = "red") +
+  labs(color = "Model",
+       title = "Model Results for Net Sentiment of All Bills")
+
+# ggsave("model results - all bills.jpeg")
+```
+
+
+
+
 ```{r}
 data %>%
   data_grid(Elected, .model = elected_new) %>%
@@ -474,7 +611,7 @@ data %>%
   ungroup() %>%
   ggplot(aes(x = Elected, y = mean_pred)) +
   geom_col() +
-  labs(x = "Selection System", y = "Mean Predicted Net Sentiment",
+  labs(x = "Retention System", y = "Mean Predicted Net Sentiment",
        caption = "Using Elected Model") +
   geom_hline(yintercept = 0, lty = 2, color = "red")
 
@@ -584,7 +721,7 @@ curbing_data %>%
   geom_line() +
   coord_cartesian(ylim = c(-1, 1)) +
   scale_x_continuous(breaks = seq(2008, 2017, 1)) +
-  labs(y = "Net Sentiment", color = "Selection System") +
+  labs(y = "Net Sentiment", color = "Retention System") +
   scale_color_discrete(labels = c("Appointed", "Elected"))
 
 # ggsave("overall sentiment by selection - curbs.jpeg")
@@ -646,6 +783,77 @@ stargazer(curbing_elected_new, curbing_ideology_new, curbing_interaction_new, cu
 #           curbing_full_int_new, curbing_full_no_int_new, type = "html", out = "curbing models standard error.doc")
 ```
 
+```{r}
+model1 <- tidy(curbing_elected_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Elected",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model2 <- tidy(curbing_ideology_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Ideology",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model3 <- tidy(curbing_interaction_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Interaction",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model4 <- tidy(curbing_controls_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Controls - No Ideology",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model5 <- tidy(curbing_full_int_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Full Model",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+model6 <- tidy(curbing_full_no_int_new) %>%
+  filter(!str_detect(term, "Fullstate"),
+         term != "(Intercept)") %>%
+  mutate(model = "Full - no Interaction",
+         term = ifelse(term == "Elected:outside", "Elected * Outside", term),
+         term = ifelse(term == "outside", "Outside", term),
+         conf.low = (estimate - (1.645 * std.error)),
+         conf.high = (estimate + (1.645 * std.error))) %>%
+  select(-std.error)
+
+combined <- rbind(model1, model2, model3, model4, model5, model6)
+
+dwplot(combined) +
+  geom_vline(xintercept = 0, lty = 2, color = "red") +
+  labs(color = "Model",
+       title = "Model Results for Net Sentiment of Court Curbing Bills")
+
+ggsave("model results - curbing only.jpeg")
+```
+
 
 
 
@@ -658,7 +866,7 @@ curbing_data %>%
   ungroup() %>%
   ggplot(aes(x = factor(Elected), y = mean_pred)) +
   geom_col() +
-  labs(x = "Selection System", y = "Mean Predicted Net Sentiment",
+  labs(x = "Retention System", y = "Mean Predicted Net Sentiment",
        caption = "Using Elected Model - Court Curbing") +
   geom_hline(yintercept = 0, lty = 2, color = "red") +
   scale_x_discrete(labels = c("Appointed", "Elected"))

@@ -46,6 +46,27 @@ gavel %>%
   count()
 ```
 
+```{r}
+# finding a few bills that are good examples
+gavel %>%
+  filter(RichardLastAction %in% c("Ballot", "Enacted", "Veto Override")) %>%
+  select(State, `Bill Number`, Year, Description) %>%
+  filter(Year == 2017) %>%
+  filter(`Bill Number` %in% c("HB 1041",
+                              "SJR 8 (Constitutional Amendment)")) %>%
+  pull(Description)
+```
+
+```{r}
+gavel %>%
+  select(State, `Bill Number`, Year, Description, RichardLastAction) %>%
+  filter(str_detect(Description, "republic"),
+         `Bill Number` == "HB 1770") %>%
+  pull(Description)
+```
+
+
+
 How man bills over time?
 ```{r}
 gavel %>%
@@ -634,7 +655,7 @@ tidy_bing_custom_stop %>%
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
   coord_cartesian(ylim = c(-1500, 1500)) +
-  labs(y = "Net Sentiment", caption = "Using Bing Dictionary", color = "Selection System")
+  labs(y = "Net Sentiment", caption = "Using Bing Dictionary", color = "Retention System")
 
 # ggsave("Net sentiment by selection.jpeg")
 ```
@@ -672,7 +693,7 @@ tidy_bing_custom_stop %>%
   geom_line() +
   scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016)) +
   coord_cartesian(ylim = c(-1500, 1500)) +
-  labs(y = "Net Sentiment", color = "Selection System", caption = "Using Bing Dictionary") +
+  labs(y = "Net Sentiment", color = "Retention System", caption = "Using Bing Dictionary") +
   facet_wrap(~outside)
 
 # ggsave("net sentiment by ideology and selection.jpeg")
